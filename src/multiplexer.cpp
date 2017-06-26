@@ -25,11 +25,17 @@
 
 #include "wx/wx.h"
 
+#include "data_stream/data_parsers.h"
+#include "data_stream/data_stream.h"
+#include "data_stream/data_stream_event.h"
 #include "multiplexer.h"
 #include "navutil.h"
 #include "NMEALogWindow.h"
 #include "garmin/jeeps/garmin_wrapper.h"
-#include "OCPN_DataStreamEvent.h"
+
+// wx extension
+#include <wx/jsonval.h>
+#include <wx/jsonreader.h>
 
 extern PlugInManager    *g_pi_manager;
 extern wxString         g_GPS_Ident;
@@ -48,6 +54,7 @@ Multiplexer::Multiplexer()
     m_aisconsumer = NULL;
     m_gpsconsumer = NULL;
     Connect(wxEVT_OCPN_DATASTREAM, (wxObjectEventFunction)(wxEventFunction)&Multiplexer::OnEvtStream);
+    Connect(wxEVT_OCPN_DATASTREAM, (wxObjectEventFunction)(wxEventFunction)&Multiplexer::OnDataStreamEvent);
     m_pdatastreams = new wxArrayOfDataStreams();
 }
 
@@ -133,6 +140,7 @@ void Multiplexer::StartAllStreams( void )
                                                dstr->SetOutputFilter(cp->OutputSentenceList);
                                                dstr->SetOutputFilterType(cp->OutputSentenceListType);
                                                dstr->SetChecksumCheck(cp->ChecksumCheck);
+                                               dstr->SetDataProtocol( cp->Data);
 
             cp->b_IsSetup = true;
 
@@ -244,8 +252,13 @@ void Multiplexer::SetGPSHandler(wxEvtHandler *handler)
     m_gpsconsumer = handler;
 }
 
-void Multiplexer::OnEvtStream(OCPN_DataStreamEvent& event)
+void Multiplexer::OnEvtStream( DataStreamEvent& event)
 {
+    // guard to prevent processing of messages this method doesn't understand
+    if( DataStreamEvent::format::NMEA0183 != event.GetFormat()){
+        return;
+    }
+  
     wxString message = event.ProcessNMEA4Tags();
     
     DataStream *stream = event.GetStream();
@@ -271,11 +284,13 @@ void Multiplexer::OnEvtStream(OCPN_DataStreamEvent& event)
                 message.Mid(3,3).IsSameAs(_T("OSD")) ||
                 ( g_bWplIsAprsPosition && message.Mid(3,3).IsSameAs(_T("WPL")) ) )
             {
+                event.SetType( DataStreamEvent::type::TARGET );
                 if( m_aisconsumer )
                     m_aisconsumer->AddPendingEvent(event);
             }
             else
             {
+                event.SetType( DataStreamEvent::type::OWNSHIP );
                 if( m_gpsconsumer )
                     m_gpsconsumer->AddPendingEvent(event);
             }
@@ -347,6 +362,37 @@ void Multiplexer::OnEvtStream(OCPN_DataStreamEvent& event)
             }
             LogInputMessage( fmsg, port, !bpass, b_error );
         }
+    }
+}
+
+
+void Multiplexer::OnDataStreamEvent( DataStreamEvent& event){
+    if( DataStreamEvent::format::JSON == event.GetFormat() ){
+        switch( event.GetType() ){
+            typedef DataStreamEvent::type type;
+            case type::OWNSHIP:
+                if( m_gpsconsumer ){
+                    m_gpsconsumer->AddPendingEvent( event);
+                }
+                break;
+            case type::TARGET:
+                if( m_aisconsumer ){
+                    m_aisconsumer->AddPendingEvent( event);
+                }
+                break;
+            case type::WAYPOINTS:
+                // NYI
+            case type::ZONE:
+                // NYI
+            case type::UNKNOWN:
+            case type::IGNORE:
+            default:
+                // NYI
+                break;
+        }
+    }else{
+        // process in next event handler
+        event.Skip();
     }
 }
 

@@ -49,9 +49,11 @@
 //#include <gtk/gtk.h>
 #define GSocket GlibGSocket
 #include "wx/socket.h"
+#include <wx/sckstrm.h>
 #undef GSocket
 #else
 #include "wx/socket.h"
+#include <wx/sckstrm.h>
 #endif
 
 #ifndef __WXMSW__
@@ -67,7 +69,7 @@
 #include <initguid.h>
 #endif
 #include <string>
-#include "ConnectionParams.h"
+#include "connection_parameters.h"
 #include "dsPortType.h"
 
 //----------------------------------------------------------------------------
@@ -113,11 +115,10 @@ enum {
 
 
 // Class declarations
-class OCP_DataStreamInput_Thread;
+class DataStreamInputThread;
 class DataStream;
 class GarminProtocolHandler;
 
-extern  const wxEventType wxEVT_OCPN_DATASTREAM;
 extern  const wxEventType wxEVT_OCPN_THREADMSG;
 
 bool CheckSumCheck(const std::string& sentence);
@@ -187,13 +188,18 @@ public:
     ListType GetOutputSentenceListType(){ return m_output_filter_type; }
     bool GetChecksumCheck(){ return m_bchecksumCheck; }
     ConnectionType GetConnectionType(){ return m_connection_type; }
+    DataProtocol GetDataProtocol(){ return m_data_protocol;}
+  
+    void SetDataProtocol( DataProtocol _datpro ){m_data_protocol = _datpro;}
 
     int                 m_Thread_run_flag;
 private:
     void Init(void);
     void Open(void);
 
-    void OnSocketEvent(wxSocketEvent& event);
+    void OnSocketDataJSON( wxSocketEvent& event);
+    void OnSocketDataNMEA( wxSocketEvent& event);
+    void OnSocketEvent( wxSocketEvent& event);
     void OnTimerSocket(wxTimerEvent& event);
     void OnSocketReadWatchdogTimer(wxTimerEvent& event);
     
@@ -207,7 +213,7 @@ private:
     void                *m_user_data;
 
 
-    OCP_DataStreamInput_Thread *m_pSecondary_Thread;
+    DataStreamInputThread *m_pSecondary_Thread;
     bool                m_bsec_thread_active;
     int                 m_last_error;
 
@@ -230,6 +236,7 @@ private:
     wxString            m_net_addr;
     wxString            m_net_port;
     NetworkProtocol     m_net_protocol;
+    DataProtocol        m_data_protocol;
     ConnectionType      m_connection_type;
 
     bool                m_bchecksumCheck;

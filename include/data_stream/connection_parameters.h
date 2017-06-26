@@ -44,7 +44,6 @@ typedef enum
 {
     TCP = 0,
     UDP = 1,
-    GPSD = 2,
     PROTO_UNDEFINED = 3
 } NetworkProtocol;
 
@@ -62,9 +61,12 @@ typedef enum
 
 typedef enum
 {
-    PROTO_NMEA0183 = 0,
-    PROTO_SEATALK = 1,
-    PROTO_NMEA2000 = 2
+    DATA_NMEA0183 = 0,
+    DATA_SEATALK = 1,
+    DATA_NMEA2000 = 2,
+    DATA_JSON = 3,
+    DATA_GPSD_JSON = 4,
+    DATA_GPSD_NMEA = 5
 } DataProtocol;
 
 class ConnectionParams
@@ -82,7 +84,7 @@ public:
     int             LastNetworkPort;
     NetworkProtocol LastNetProtocol;
     
-    DataProtocol    Protocol;
+    DataProtocol    Data;
     wxString        Port;
     int             Baudrate;
     bool            ChecksumCheck;

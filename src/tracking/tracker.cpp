@@ -1,9 +1,11 @@
 /***************************************************************************
  *
  * Project:  OpenCPN
+ * Purpose:  Track AIS Targets
+ * Author:   Daniel Williams
  *
  ***************************************************************************
- *   Copyright (C) 2010 by David S. Register                               *
+ *   Copyright (C) 2017                                                    *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -20,30 +22,26 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,  USA.         *
  ***************************************************************************
- */
+ */ 
 
-#ifndef __OCPNLISTCTRL_H__
-#define __OCPNLISTCTRL_H__
+#include "tracking/tracker.h"
 
-#include <wx/listctrl.h>
+using tracking::Tracker;
+using tracking::Target;
+// using tracking::Track;
 
-#include "ais/ais.h"
-#include "AISTargetListDialog.h"
+Tracker g_tracker;
 
-class OCPNListCtrl: public wxListCtrl
-{
-public:
-    OCPNListCtrl( AISTargetListDialog* parent, wxWindowID id, const wxPoint& pos,
-            const wxSize& size, long style );
-    ~OCPNListCtrl();
+Tracker::Tracker(){
+}
 
-    wxString OnGetItemText( long item, long column ) const;
-    int OnGetItemColumnImage( long item, long column ) const;
+// Tracker::~Tracker(){}
 
-    wxString GetTargetColumnData( AIS_Target_Data *pAISTarget, long column ) const;
+Target* Tracker::GetTarget( const uint32_t target_id ){
+    // return m_targets.get( target_id, nullptr );
+    return nullptr;    
+}
 
-    AISTargetListDialog *m_parent;
 
-};
 
-#endif
+

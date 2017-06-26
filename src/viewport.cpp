@@ -39,6 +39,10 @@
 
 #include <wx/listimpl.cpp>
 
+#include "ais/ais.h"
+#include "ais/ais_decoder.h"
+#include "ais/ais_target.h"
+#include "AISTargetAlertDialog.h"
 #include "chcanv.h"
 #include "TCWin.h"
 #include "geodesic.h"
@@ -69,9 +73,6 @@
 #include "SelectItem.h"
 #include "Select.h"
 #include "FontMgr.h"
-#include "AIS_Decoder.h"
-#include "AIS_Target_Data.h"
-#include "AISTargetAlertDialog.h"
 #include "SendToGpsDlg.h"
 #include "OCPNRegion.h"
 #include "gshhs.h"
@@ -85,8 +86,6 @@
 #include "s57chart.h"               // for ArrayOfS57Obj
 #include "s52plib.h"
 #endif
-
-#include "ais.h"
 
 #ifdef __MSVC__
 #define _CRTDBG_MAP_ALLOC

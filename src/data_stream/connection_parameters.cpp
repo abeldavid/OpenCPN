@@ -3,7 +3,8 @@
  * Project:  OpenCPN
  *
  ***************************************************************************
- *   Copyright (C) 2013 by David S. Register                               *
+ *   Copyright (C) 2013 by David S. Register
+ *                         Daniel Williams
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -24,7 +25,7 @@
 #include <wx/tokenzr.h>
 #include <wx/intl.h>
 
-#include "ConnectionParams.h"
+#include "data_stream/connection_parameters.h"
 
 #if !wxUSE_XLOCALE && wxCHECK_VERSION(3,0,0)
 #define wxAtoi(arg) atoi(arg)
@@ -49,7 +50,7 @@ void ConnectionParams::Deserialize(const wxString &configStr)
     NetProtocol = (NetworkProtocol)wxAtoi(prms[1]);
     NetworkAddress = prms[2];
     NetworkPort = (ConnectionType)wxAtoi(prms[3]);
-    Protocol = (DataProtocol)wxAtoi(prms[4]);
+    Data = (DataProtocol)wxAtoi(prms[4]);
     Port = prms[5];
     Baudrate = wxAtoi(prms[6]);
     ChecksumCheck = !!wxAtoi(prms[7]);
@@ -92,7 +93,7 @@ wxString ConnectionParams::Serialize()
                                      NetProtocol,
                                      NetworkAddress.c_str(),
                                      NetworkPort,
-                                     Protocol,
+                                     Data,
                                      Port.c_str(),
                                      Baudrate,
                                      ChecksumCheck,
@@ -112,13 +113,13 @@ wxString ConnectionParams::Serialize()
 }
 
 ConnectionParams::ConnectionParams()
+    : Data( DATA_NMEA0183)
+    , Port( wxEmptyString)
 {
     Type = SERIAL;
     NetProtocol = TCP;
     NetworkAddress = wxEmptyString;
     NetworkPort = 0;
-    Protocol = PROTO_NMEA0183;
-    Port = wxEmptyString;
     Baudrate = 4800;
     ChecksumCheck = true;
     Garmin = false;
@@ -165,19 +166,19 @@ wxString ConnectionParams::GetParametersStr()
     if ( Type == SERIAL )
         return wxString::Format( _T("%d"), Baudrate );
     else if ( Type == NETWORK ){
-        if ( NetProtocol == TCP )
+        if( DATA_GPSD_NMEA == Data || DATA_GPSD_JSON == Data )
+            return _("GPSD");
+        else if ( NetProtocol == TCP )
             return _("TCP");
         else if (NetProtocol == UDP)
             return _("UDP");
-        else
-            return _("GPSD");
     }
     else if ( Type == INTERNAL_GPS )
         return _T("");
     else if ( Type == INTERNAL_BT )
         return Port;
-    else
-        return _T("");
+
+    return _T("");
 }
 
 wxString ConnectionParams::GetIOTypeValueStr()
@@ -247,13 +248,7 @@ wxString ConnectionParams::GetDSPort()
     if ( Type == SERIAL )
         return wxString::Format( _T("Serial:%s"), Port.c_str() );
     else if( Type == NETWORK){
-        wxString proto;
-        if ( NetProtocol == TCP )
-            proto = _T("TCP");
-        else if (NetProtocol == UDP)
-            proto = _T("UDP");
-        else
-            proto = _T("GPSD");
+        wxString proto = GetParametersStr();
         return wxString::Format( _T("%s:%s:%d"), proto.c_str(), NetworkAddress.c_str(), NetworkPort );
     }
     else if( Type == INTERNAL_BT ){
@@ -264,7 +259,7 @@ wxString ConnectionParams::GetDSPort()
     }
     else
         return _T("");
-    
+
 }
 
 wxString ConnectionParams::GetLastDSPort()
@@ -273,13 +268,7 @@ wxString ConnectionParams::GetLastDSPort()
         return wxString::Format( _T("Serial:%s"), Port.c_str() );
     else
     {
-        wxString proto;
-        if ( LastNetProtocol == TCP )
-            proto = _T("TCP");
-        else if (LastNetProtocol == UDP)
-            proto = _T("UDP");
-        else
-            proto = _T("GPSD");
+        wxString proto = GetParametersStr();
         return wxString::Format( _T("%s:%s:%d"), proto.c_str(), LastNetworkAddress.c_str(), LastNetworkPort );
     }
 }

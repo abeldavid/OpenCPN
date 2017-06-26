@@ -24,9 +24,10 @@
 
 #include <wx/html/htmlwin.h>
 
+#include "ais/ais.h"
+#include "ais/ais_decoder.h"
+#include "ais/ais_target.h"
 #include "AISTargetAlertDialog.h"
-#include "AIS_Decoder.h"
-#include "AIS_Target_Data.h"
 #include "FontMgr.h"
 #include "ocpn_types.h"
 #include "Select.h"

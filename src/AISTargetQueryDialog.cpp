@@ -26,18 +26,18 @@
 
 #include <wx/html/htmlwin.h>
 
+#include "ais/ais.h"
+#include "ais/ais_decoder.h"
+#include "ais/ais_target.h"
 #include "AISTargetQueryDialog.h"
 #include "chart1.h"
 #include "chcanv.h"
 #include "navutil.h"
-#include "ais.h"
 #include "FontMgr.h"
-#include "AIS_Target_Data.h"
-#include "AIS_Decoder.h"
 #include "Select.h"
 #include "routemanagerdialog.h"
 #include "OCPNPlatform.h"
-#include "Track.h"
+#include "tracking/track.h"
 
 extern AISTargetQueryDialog *g_pais_query_dialog_active;
 extern int g_ais_query_dialog_x;

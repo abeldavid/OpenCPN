@@ -22,28 +22,62 @@
  ***************************************************************************
  */
 
-#ifndef __OCPNLISTCTRL_H__
-#define __OCPNLISTCTRL_H__
+#ifndef __MMSI_TRACKER_H__
+#define __MMSI_TRACKER_H__
 
-#include <wx/listctrl.h>
+#include <cstdint>
+#include <map>
+#include <memory>
+#include <string>
 
-#include "ais/ais.h"
-#include "AISTargetListDialog.h"
+#include "mmsi_properties.h"
 
-class OCPNListCtrl: public wxListCtrl
-{
+namespace AIS {
+
+typedef std::map< mmsi_t, std::shared_ptr<MMSIProperties> >::iterator mmsi_iter_t;
+
+class MMSITracker {
 public:
-    OCPNListCtrl( AISTargetListDialog* parent, wxWindowID id, const wxPoint& pos,
-            const wxSize& size, long style );
-    ~OCPNListCtrl();
+    MMSITracker();
+    ~MMSITracker();
 
-    wxString OnGetItemText( long item, long column ) const;
-    int OnGetItemColumnImage( long item, long column ) const;
+    mmsi_iter_t begin();
+    mmsi_iter_t end();
 
-    wxString GetTargetColumnData( AIS_Target_Data *pAISTarget, long column ) const;
 
-    AISTargetListDialog *m_parent;
+    void clear();
 
-};
+    MMSIProperties& clone( mmsi_t mmsi_old, mmsi_t mmsi_new);
 
-#endif
+    bool contains( mmsi_t mmsi) const ;
+
+    void emplace( const std::string& serialized_data );
+
+    // takes ownership of pointer
+    void insert( MMSIProperties * new_props);
+
+    void erase( const mmsi_t key );
+
+    // register or retrieve
+    MMSIProperties& GetOrRegister( mmsi_t mmsi);
+
+
+    // retrieve only
+    MMSIProperties* operator[]( mmsi_t mmsi);
+
+    void LoadShipNames( const std::string& filename );
+    void SaveAllShipNames();
+    void SaveSingleShipName( mmsi_t mmsi );
+
+    size_t size() const;
+
+
+protected:
+    std::string m_name_file;
+    std::map< mmsi_t, std::shared_ptr<MMSIProperties> >  m_mmsi_properties;
+
+}; // class MMSITracker
+
+}; // namespace AIS
+
+#endif // __MMSI_PROPERTIES_H__

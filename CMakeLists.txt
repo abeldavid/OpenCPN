@@ -305,11 +305,8 @@ ENDIF(_wx_selected_config MATCHES "androideabi-qt")
 ENDIF(DEFINED _wx_selected_config)
 
 IF((_wx_selected_config MATCHES "qt-armv7"))
-#SET(CMAKE_BUILD_TYPE Debug)
-ENDIF()
-
-IF((_wx_selected_config MATCHES "qt-armv7"))
-SET(wxWidgets_USE_LIBS base core     xml html adv aui)
+  #SET(CMAKE_BUILD_TYPE Debug)
+  SET(wxWidgets_USE_LIBS base core     xml html adv aui)
 ELSE()
   SET(wxWidgets_USE_LIBS net xml html adv aui core base)
 ENDIF()
@@ -356,6 +353,7 @@ IF(QT_ANDROID)
 
 ENDIF(QT_ANDROID)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 IF ((NOT OPENGLES_FOUND) AND (NOT QT_ANDROID))
 
@@ -436,7 +434,7 @@ MESSAGE (STATUS "*** Staging to build ${PACKAGE_NAME}  ***")
 
 #SET(CMAKE_BUILD_TYPE Debug)
 IF( NOT CMAKE_BUILD_TYPE )
-  SET( CMAKE_BUILD_TYPE Release CACHE STRING
+  SET( CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
        "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
        FORCE )
 ENDIF( NOT CMAKE_BUILD_TYPE )
@@ -457,12 +455,13 @@ SET(PREFIX_LIB "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
 
 # require proper c++
-#ADD_DEFINITIONS( "-Wall -ansi -pedantic -Wno-variadic-macros" )
+#ADD_DEFINITIONS( "-Wall -pedantic -Wno-variadic-macros" )
 #TODO: Should we use  -fno-stack-protector
 #  IF NOT DEBUGGING CFLAGS="-O2 -march=native"
 IF(NOT WIN32 AND NOT APPLE )
   ADD_DEFINITIONS( "-Wall -Wno-unused -fexceptions -rdynamic" )
   ADD_DEFINITIONS( " -g -fno-strict-aliasing")
+  ADD_DEFINITIONS( "-std=c++14" )
   IF(CMAKE_BUILD_TYPE MATCHES "Debug")
     ADD_DEFINITIONS( " -O0")
   ENDIF(CMAKE_BUILD_TYPE MATCHES "Debug")
@@ -479,13 +478,15 @@ ENDIF(NOT WIN32 AND NOT APPLE)
 IF(MINGW)
   ADD_DEFINITIONS( "-Wall -Wno-unused -Wno-cpp -fexceptions" )
   ADD_DEFINITIONS( " -g -fno-strict-aliasing")
+  ADD_DEFINITIONS( "-std=c++14" )
 ENDIF(MINGW)
 
 IF( APPLE )
   ADD_DEFINITIONS( "-Wall -Wno-unused -fexceptions -Wno-overloaded-virtual" )
   ADD_DEFINITIONS( " -g -fno-strict-aliasing")
+  ADD_DEFINITIONS( "-std=c++14" )
   ADD_DEFINITIONS( " -Wno-deprecated -Wno-deprecated-declarations -Wno-unknown-pragmas" )
-  ADD_DEFINITIONS( " -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_" )
+  #ADD_DEFINITIONS( " -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_" )
 ENDIF(APPLE)
 
 #Enable CrashReporting for Windows (visual studio) and Linux
@@ -519,11 +520,7 @@ IF(MSVC)
     ADD_DEFINITIONS(-DPSAPI_VERSION=1)
 ENDIF(MSVC)
 
-# Location where cmake first looks for cmake modules.
-SET(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/build)
 
-# Let cmake find additional modules private to opencpn
-SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/")
 
 IF (NOT WIN32 AND NOT APPLE)
 
@@ -557,7 +554,7 @@ IF(QT_ANDROID)
 ENDIF(QT_ANDROID)
 
 IF(UNIX AND NOT QT_ANDROID)
-INCLUDE("FindPortaudio.cmake")
+FIND_PACKAGE( Portaudio)
 IF (PORTAUDIO_FOUND)
     MESSAGE (STATUS "Portaudio Found")
     INCLUDE_DIRECTORIES(${PORTAUDIO_INCLUDE_DIRS})
@@ -947,6 +944,12 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/src/nmea0183)
 
 
 SET(HDRS
+        include/ais/ais.h
+        include/ais/ais_bitstring.h
+        include/ais/ais_decoder.h
+        include/ais/ais_target.h
+        include/ais/mmsi_properties.h
+        include/ais/mmsi_tracker.h
                 include/ocpn_types.h
                 include/ocpndc.h
 		include/chart1.h
@@ -960,12 +963,9 @@ SET(HDRS
 		include/timers.h
 		include/emboss_data.h
 		include/AISTargetQueryDialog.h
-		include/AIS_Bitstring.h
 		include/AISTargetListDialog.h
 		include/OCPNListCtrl.h
 		include/AISTargetAlertDialog.h
-		include/AIS_Decoder.h
-		include/AIS_Target_Data.h
 		include/CM93DSlide.h
 		include/GoToPositionDialog.h
 		include/RolloverWin.h
@@ -984,7 +984,6 @@ SET(HDRS
 		include/NavObjectCollection.h
 		include/RoutePoint.h
 		include/Route.h
-                include/Track.h
 		include/SelectItem.h
 		include/Select.h
 		include/FontMgr.h
@@ -1022,7 +1021,6 @@ SET(HDRS
 		include/kml.h
 		include/undo.h
 		include/about.h
-		include/ais.h
 		include/pluginmanager.h
 		include/ocpn_plugin.h
 		include/gpxdocument.h
@@ -1031,13 +1029,18 @@ SET(HDRS
 		include/wx/jsonreader.h
 		include/styles.h
 		include/toolbar.h
+    include/tracking/track.h
+    include/tracking/target.h
+    include/tracking/tracker.h
 		include/compass.h
 		include/geodesic.h
-		include/datastream.h
-		include/OCPN_DataStreamEvent.h
-		include/ConnectionParams.h
-		include/OCP_DataStreamInput_Thread.h
-		include/dsPortType.h
+        include/ui/dialog/mmsi_edit_dialog.h
+		include/data_stream/data_stream.h
+		include/data_stream/data_stream_event.h
+    include/data_stream/data_stream_input_thread.h
+    include/data_stream/data_parsers.h
+    include/data_stream/connection_parameters.h
+    include/dsPortType.h
                 include/multiplexer.h
                 include/OCPNRegion.h
                 include/LLRegion.h
@@ -1052,6 +1055,12 @@ SET(HDRS
 )
 
 SET(SRCS
+        src/ais/ais.cpp
+        src/ais/ais_bitstring.cpp
+        src/ais/ais_decoder.cpp
+        src/ais/ais_target.cpp
+        src/ais/mmsi_properties.cpp
+        src/ais/mmsi_tracker.cpp
 		src/chart1.cpp
 		src/bbox.cpp
 		src/ocpn_pixel.cpp
@@ -1061,6 +1070,12 @@ SET(SRCS
 		src/chartimg.cpp
                 src/ChartDataInputStream.cpp
 		src/chcanv.cpp
+                src/data_stream/connection_parameters.cpp
+                src/data_stream/data_stream.cpp
+                src/data_stream/data_stream_event.cpp
+                src/data_stream/data_stream_input_thread.cpp
+                src/data_stream/json_parser.cpp
+                src/data_stream/nmea0183_parser.cpp
 		src/ocpCursor.cpp
 		src/TCWin.cpp
 		src/S57QueryDialog.cpp
@@ -1069,18 +1084,14 @@ SET(SRCS
 		src/RolloverWin.cpp
 		src/ChInfoWin.cpp
 		src/AISTargetQueryDialog.cpp
-		src/AIS_Bitstring.cpp
 		src/AISTargetListDialog.cpp
-		src/AISTargetAlertDialog.cpp
-		src/AIS_Decoder.cpp
-		src/AIS_Target_Data.cpp
+		src/AISTargetAlertDialog.cpp		
 		src/OCPNListCtrl.cpp
 		src/Quilt.cpp
 		src/Hyperlink.cpp
 		src/NavObjectCollection.cpp
 		src/RoutePoint.cpp
 		src/Route.cpp
-                src/Track.cpp
 		src/SelectItem.cpp
 		src/Select.cpp
 		src/FontMgr.cpp
@@ -1116,7 +1127,6 @@ SET(SRCS
 		src/kml.cpp
 		src/undo.cpp
 		src/about.cpp
-		src/ais.cpp
 		src/pluginmanager.cpp
 		src/gpxdocument.cpp
 		src/wxJSON/jsonwriter.cpp
@@ -1124,13 +1134,12 @@ SET(SRCS
 		src/wxJSON/jsonval.cpp
 		src/styles.cpp
 		src/toolbar.cpp
+    src/tracking/track.cpp
+    src/tracking/target.cpp
+    src/tracking/tracker.cpp
 		src/compass.cpp
 		src/geodesic.cpp
-		src/datastream.cpp
-		src/OCPN_DataStreamEvent.cpp
-		src/ConnectionParams.cpp
-		src/OCP_DataStreamInput_Thread.cpp
-                src/multiplexer.cpp
+		            src/multiplexer.cpp
                 src/pugixml.cpp
                 src/OCPNRegion.cpp
                 src/LLRegion.cpp
@@ -1142,6 +1151,7 @@ SET(SRCS
                 src/OCPNPlatform.cpp 
                 src/FlexHash.cpp
                 src/iENCToolbar.cpp
+        src/ui/dialog/mmsi_edit_dialog.cpp
     )
 
 IF(NOT WIN32 AND NOT APPLE AND NOT QT_ANDROID)
@@ -1595,7 +1605,7 @@ IF(APPLE)
   SET(CMAKE_C_FLAGS_RELEASE "-O3 -arch ${ARCH}")
   SET(CMAKE_C_FLAGS_RELWITHDEBINFO "-g -O3 -arch ${ARCH}")
 
-  SET(CMAKE_CXX_FLAGS "-O2 -arch ${ARCH}")
+  SET(     "-O2 -arch ${ARCH}")
   SET(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -arch ${ARCH}")
   SET(CMAKE_CXX_FLAGS_MINSIZEREL "-O2 -arch ${ARCH}")
   SET(CMAKE_CXX_FLAGS_RELEASE "-O3 -arch ${ARCH}")
@@ -1630,10 +1640,10 @@ IF(WIN32)
         SET(CMAKE_C_FLAGS_MINSIZEREL          "/MD  /O1  /Ob1 /D NDEBUG")
         SET(CMAKE_C_FLAGS_RELEASE             "/MD  /O2  /Ob2 /D NDEBUG /Zi")
         SET(CMAKE_C_FLAGS_RELWITHDEBINFO      "/MD  /O2  /Ob1 /D NDEBUG /Zi")
-        SET(CMAKE_CXX_FLAGS_DEBUG             "/MDd /Ob0 /Od  /D_DEBUG  /Zi /RTC1 /EHa")
-        SET(CMAKE_CXX_FLAGS_MINSIZEREL        "/MD  /O1  /Ob1 /D NDEBUG /EHa")
-        SET(CMAKE_CXX_FLAGS_RELEASE           "/MD  /O2  /Ob2 /D NDEBUG /Zi /EHa")
-        SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO    "/MD  /O2  /Ob1 /D NDEBUG /Zi /EHa" )
+        SET(CMAKE_CXX_FLAGS_DEBUG             "/MDd /Ob0 /Od  /D_DEBUG  /Zi /RTC1 /EHa /std:c++14")
+        SET(CMAKE_CXX_FLAGS_MINSIZEREL        "/MD  /O1  /Ob1 /D NDEBUG /EHa /std:c++14")
+        SET(CMAKE_CXX_FLAGS_RELEASE           "/MD  /O2  /Ob2 /D NDEBUG /Zi /EHa /std:c++14")
+        SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO    "/MD  /O2  /Ob1 /D NDEBUG /Zi /EHa /std:c++14" )
         SET(CMAKE_EXE_LINKER_FLAGS /DEBUG)
 
     ENDIF(MSVC)
@@ -2295,4 +2305,6 @@ IF(APPLE)
  ADD_CUSTOM_TARGET(create-dmg COMMENT "create-dmg: Done." DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}_${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}.dmg)
 ENDIF(APPLE)
 
+INCLUDE( cmake/CustomTargets.cmake )
+  
 MESSAGE(STATUS "Writing spec file...")

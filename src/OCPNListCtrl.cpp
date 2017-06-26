@@ -22,8 +22,8 @@
  ***************************************************************************
  */
 
+#include "ais/ais_target.h"
 #include "OCPNListCtrl.h"
-#include "AIS_Target_Data.h"
 
 extern wxString g_AisTargetList_column_spec;
 extern bool bGPSValid;

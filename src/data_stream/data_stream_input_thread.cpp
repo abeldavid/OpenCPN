@@ -21,9 +21,9 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,  USA.         *
  **************************************************************************/
 
-#include "OCP_DataStreamInput_Thread.h"
-#include "OCPN_DataStreamEvent.h"
-#include "datastream.h"
+#include "data_stream/data_stream.h"
+#include "data_stream/data_stream_event.h"
+#include "data_stream/data_stream_input_thread.h"
 #include "dychart.h"
 
 #ifdef __WXQT__
@@ -36,7 +36,6 @@
 
 #define DS_RX_BUFFER_SIZE 4096
 
-extern const wxEventType wxEVT_OCPN_DATASTREAM;
 extern const wxEventType wxEVT_OCPN_THREADMSG;
 
 #include "chart1.h"
@@ -62,7 +61,7 @@ typedef enum DS_ENUM_BUFFER_STATE
  * This thread manages reading the NMEA data stream from the declared source.
  */
 
-OCP_DataStreamInput_Thread::OCP_DataStreamInput_Thread(DataStream *Launcher,
+DataStreamInputThread::DataStreamInputThread(DataStream *Launcher,
                                                        wxEvtHandler *MessageTarget,
                                                        const wxString& PortName,
                                                        const wxString& strBaudRate,
@@ -93,13 +92,13 @@ OCP_DataStreamInput_Thread::OCP_DataStreamInput_Thread(DataStream *Launcher,
     
 }
 
-OCP_DataStreamInput_Thread::~OCP_DataStreamInput_Thread(void)
+DataStreamInputThread::~DataStreamInputThread(void)
 {
     delete[] rx_buffer;
     delete[] temp_buf;
 }
 
-void OCP_DataStreamInput_Thread::OnExit(void)
+void DataStreamInputThread::OnExit(void)
 {
 }
 
@@ -108,7 +107,7 @@ void OCP_DataStreamInput_Thread::OnExit(void)
 
 #ifdef __POSIX__
 //    Entry Point
-void *OCP_DataStreamInput_Thread::Entry()
+void *DataStreamInputThread::Entry()
 {
 
     bool not_done = true;
@@ -297,7 +296,7 @@ thread_exit:
 #define SERIAL_OVERLAPPED
 
 //    Entry Point
-void *OCP_DataStreamInput_Thread::Entry()
+void *DataStreamInputThread::Entry()
 {
     wxString msg;
     OVERLAPPED osReader = {0};
@@ -623,7 +622,7 @@ thread_exit:
 
 }
 
-void OCP_DataStreamInput_Thread::HandleASuccessfulRead( char *szBuf, int nread )
+void DataStreamInputThread::HandleASuccessfulRead( char *szBuf, int nread )
 {
     if(nread > 0)
     {
@@ -720,10 +719,10 @@ void OCP_DataStreamInput_Thread::HandleASuccessfulRead( char *szBuf, int nread )
 
 #endif            // __WXMSW__
 
-void OCP_DataStreamInput_Thread::Parse_And_Send_Posn(const char *buf)
+void DataStreamInputThread::Parse_And_Send_Posn(const char *buf)
 {
     if( m_pMessageTarget ) {
-        OCPN_DataStreamEvent Nevent(wxEVT_OCPN_DATASTREAM, 0);
+        DataStreamEvent Nevent(wxEVT_OCPN_DATASTREAM, 0);
         Nevent.SetNMEAString( buf );
         Nevent.SetStream( m_launcher );
 
@@ -735,7 +734,7 @@ void OCP_DataStreamInput_Thread::Parse_And_Send_Posn(const char *buf)
 
 const wxEventType wxEVT_OCPN_THREADMSG = wxNewEventType();
 
-void OCP_DataStreamInput_Thread::ThreadMessage(const wxString &msg)
+void DataStreamInputThread::ThreadMessage(const wxString &msg)
 {
     //    Signal the main program thread
     OCPN_ThreadMessageEvent event(wxEVT_OCPN_THREADMSG, 0);
@@ -744,7 +743,7 @@ void OCP_DataStreamInput_Thread::ThreadMessage(const wxString &msg)
         gFrame->GetEventHandler()->AddPendingEvent(event);
 }
 
-bool OCP_DataStreamInput_Thread::SetOutMsg(const wxString &msg)
+bool DataStreamInputThread::SetOutMsg(const wxString &msg)
 {
     //  Assume that the caller already owns the mutex
     wxCriticalSectionLocker locker( m_outCritical );
@@ -795,7 +794,7 @@ bool OCP_DataStreamInput_Thread::SetOutMsg(const wxString &msg)
 
 #ifdef __POSIX__
 
-int OCP_DataStreamInput_Thread::OpenComPortPhysical(const wxString &com_name, int baud_rate)
+int DataStreamInputThread::OpenComPortPhysical(const wxString &com_name, int baud_rate)
 {
 
     // Declare the termios data structures
@@ -886,7 +885,7 @@ int OCP_DataStreamInput_Thread::OpenComPortPhysical(const wxString &com_name, in
 }
 
 
-int OCP_DataStreamInput_Thread::CloseComPortPhysical(int fd)
+int DataStreamInputThread::CloseComPortPhysical(int fd)
 {
     close(fd);
 
@@ -894,7 +893,7 @@ int OCP_DataStreamInput_Thread::CloseComPortPhysical(int fd)
 }
 
 
-int OCP_DataStreamInput_Thread::WriteComPortPhysical(int port_descriptor, const wxString& string)
+int DataStreamInputThread::WriteComPortPhysical(int port_descriptor, const wxString& string)
 {
     ssize_t status;
     status = write(port_descriptor, string.mb_str(), string.Len());
@@ -902,14 +901,14 @@ int OCP_DataStreamInput_Thread::WriteComPortPhysical(int port_descriptor, const 
     return status;
 }
 
-int OCP_DataStreamInput_Thread::WriteComPortPhysical(int port_descriptor, char *msg)
+int DataStreamInputThread::WriteComPortPhysical(int port_descriptor, char *msg)
 {
     ssize_t status;
     status = write(port_descriptor, msg, strlen(msg));
     return status;
 }
 
-int OCP_DataStreamInput_Thread::ReadComPortPhysical(int port_descriptor, int count, unsigned char *p)
+int DataStreamInputThread::ReadComPortPhysical(int port_descriptor, int count, unsigned char *p)
 {
 //    Blocking, timeout protected read of one character at a time
 //    Timeout value is set by c_cc[VTIME]
@@ -918,7 +917,7 @@ int OCP_DataStreamInput_Thread::ReadComPortPhysical(int port_descriptor, int cou
 }
 
 
-bool OCP_DataStreamInput_Thread::CheckComPortPhysical(int port_descriptor)
+bool DataStreamInputThread::CheckComPortPhysical(int port_descriptor)
 {
     fd_set rec;
     struct timeval t;
@@ -942,7 +941,7 @@ bool OCP_DataStreamInput_Thread::CheckComPortPhysical(int port_descriptor)
 #endif            // __POSIX__
 
 #ifdef __WXMSW__
-int OCP_DataStreamInput_Thread::OpenComPortPhysical(const wxString &com_name, int baud_rate)
+int DataStreamInputThread::OpenComPortPhysical(const wxString &com_name, int baud_rate)
 {
 
 //    Set up the serial port
@@ -1036,14 +1035,14 @@ int OCP_DataStreamInput_Thread::OpenComPortPhysical(const wxString &com_name, in
     return (wxIntPtr)hSerialComm;
 }
 
-int OCP_DataStreamInput_Thread::CloseComPortPhysical(int fd)
+int DataStreamInputThread::CloseComPortPhysical(int fd)
 {
     if((HANDLE)fd != INVALID_HANDLE_VALUE)
         CloseHandle((HANDLE)fd);
     return 0;
 }
 
-int OCP_DataStreamInput_Thread::WriteComPortPhysical(int port_descriptor, const wxString& string)
+int DataStreamInputThread::WriteComPortPhysical(int port_descriptor, const wxString& string)
 {
     unsigned int dwSize = string.Len();
     char *pszBuf = (char *)malloc((dwSize + 1) * sizeof(char));
@@ -1064,7 +1063,7 @@ int OCP_DataStreamInput_Thread::WriteComPortPhysical(int port_descriptor, const 
     return fRes;
 }
 
-int OCP_DataStreamInput_Thread::WriteComPortPhysical(int port_descriptor, char *msg)
+int DataStreamInputThread::WriteComPortPhysical(int port_descriptor, char *msg)
 {
     DWORD dwWritten;
     int fRes;
@@ -1078,13 +1077,13 @@ int OCP_DataStreamInput_Thread::WriteComPortPhysical(int port_descriptor, char *
     return fRes;
 }
 
-int OCP_DataStreamInput_Thread::ReadComPortPhysical(int port_descriptor, int count, unsigned char *p)
+int DataStreamInputThread::ReadComPortPhysical(int port_descriptor, int count, unsigned char *p)
 {
     return 0;
 }
 
 
-bool OCP_DataStreamInput_Thread::CheckComPortPhysical(int port_descriptor)
+bool DataStreamInputThread::CheckComPortPhysical(int port_descriptor)
 {
     return false;
 }

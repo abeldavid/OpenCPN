@@ -76,7 +76,7 @@ millions of points.
 
 
 #include "Route.h"
-#include "Track.h"
+#include "tracking/track.h"
 #include "routeman.h"
 #include "routeprop.h"
 #include "ocpndc.h"
@@ -191,8 +191,8 @@ double _distance( vector2D& a, vector2D& b ) { return sqrt( _distance2( a, b ) )
 double _magnitude2( vector2D& a ) { return a.x*a.x + a.y*a.y; }
 
 Track::Track()
+  : me_display_mode( Track::display_mode_t::NONE )
 {
-    m_bVisible = true;
     m_bListed = true;
 
     m_width = WIDTH_UNDEFINED;
@@ -214,6 +214,35 @@ Track::~Track( void )
 
     delete m_HyperlinkList;
 }
+
+void Track::SetVisible( const bool b_visible ){
+    if( b_visible ){
+        me_display_mode=display_mode_t::LAST;
+    }else{
+        me_display_mode=display_mode_t::NONE;
+    }
+}
+  
+void Track::SetVisible( display_mode_t new_mode ){ 
+    me_display_mode = new_mode; 
+}
+
+bool Track::IsVisible() const { 
+    return me_display_mode!=display_mode_t::NONE;
+}
+
+bool Track::IsLastVisible() const { 
+    return me_display_mode==display_mode_t::LAST; 
+}
+
+bool Track::IsAllVisible() const { 
+    return me_display_mode==display_mode_t::ALL; 
+}
+
+bool Track::IsListed() const { 
+    return m_bListed; 
+}
+
 
 #define TIMER_TRACK1           778
 

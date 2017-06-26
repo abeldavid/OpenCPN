@@ -50,7 +50,7 @@ public:
       virtual void Draw(ocpnDC& dc, ViewPort &pvp, const LLBBox &box);
       virtual int GetnPoints(void) { return pRoutePointList->GetCount(); }
       virtual RoutePoint *GetPoint(int nPoint);
-      
+
       void AddPoint(RoutePoint *pNewPoint,
                     bool b_rename_in_sequence = true,
                     bool b_deferBoxCalc = false);
@@ -99,7 +99,7 @@ public:
       double GetRouteArrivalRadius(void){ return m_ArrivalRadius;}
       void SetRouteArrivalRadius(double radius){m_ArrivalRadius = radius;}
       bool isTrack(){ return m_bisTrack; }
-      
+
       int         m_ConfigRouteNum;
       bool        m_bRtIsSelected;
       bool        m_bRtIsActive;
@@ -132,8 +132,8 @@ public:
       bool        m_btemp;
       int         m_hiliteWidth;
       bool        m_bisTrack;
-      
-private:
+
+protected:
       LLBBox     RBBox;
 
       int         m_nm_sequence;

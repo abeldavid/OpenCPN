@@ -1,10 +1,11 @@
 /***************************************************************************
  *
  * Project:  OpenCPN
+ * Purpose:  Parse data stream objects
  *
  ***************************************************************************
- *   Copyright (C) 2010 by David S. Register                               *
- *                                                                         *
+ *   Copyright (C) 2017 by Daniel Williams, David S. Register
+ * 
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
  *   the Free Software Foundation; either version 2 of the License, or     *
@@ -19,31 +20,36 @@
  *   along with this program; if not, write to the                         *
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,  USA.         *
- ***************************************************************************
- */
+ **************************************************************************/
 
-#ifndef __OCPNLISTCTRL_H__
-#define __OCPNLISTCTRL_H__
+#include <memory> 
+using std::unique_ptr;
+ 
+#include <wx/log.h>
+#include <wx/stream.h>
+#include <wx/string.h>
 
-#include <wx/listctrl.h>
 
-#include "ais/ais.h"
-#include "AISTargetListDialog.h"
 
-class OCPNListCtrl: public wxListCtrl
-{
-public:
-    OCPNListCtrl( AISTargetListDialog* parent, wxWindowID id, const wxPoint& pos,
-            const wxSize& size, long style );
-    ~OCPNListCtrl();
+#include "data_stream/data_parsers.h"
 
-    wxString OnGetItemText( long item, long column ) const;
-    int OnGetItemColumnImage( long item, long column ) const;
+namespace parsers{
+   
+namespace NMEA0183{
 
-    wxString GetTargetColumnData( AIS_Target_Data *pAISTarget, long column ) const;
 
-    AISTargetListDialog *m_parent;
+// ======== file-private declarations ========
 
-};
 
-#endif
+// ========    function definitions   ========
+void* parseNMEA0183Sentence( wxString &source ){
+    // NYI
+    wxLogMessage("!! parse-NMEA-0183-sentences is NYI !!! ");
+    
+    // NYI
+    return nullptr;
+}
+
+
+}; // namespace JSON
+}; // namespace parsers

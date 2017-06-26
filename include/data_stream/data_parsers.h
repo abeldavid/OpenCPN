@@ -3,7 +3,7 @@
  * Project:  OpenCPN
  *
  ***************************************************************************
- *   Copyright (C) 2010 by David S. Register                               *
+ *   Copyright (C) 2017 Daniel Williams
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -22,28 +22,40 @@
  ***************************************************************************
  */
 
-#ifndef __OCPNLISTCTRL_H__
-#define __OCPNLISTCTRL_H__
+#ifndef __DATA_PARSERS_H__
+#define __DATA_PARSERS_H__
 
-#include <wx/listctrl.h>
+#include "data_stream_event.h"
 
-#include "ais/ais.h"
-#include "AISTargetListDialog.h"
+class wxJSONValue;
 
-class OCPNListCtrl: public wxListCtrl
-{
-public:
-    OCPNListCtrl( AISTargetListDialog* parent, wxWindowID id, const wxPoint& pos,
-            const wxSize& size, long style );
-    ~OCPNListCtrl();
+namespace parsers {
+   
+namespace JSON {
+// public:
+    bool generateNextEvent( wxInputStream& socket_stream, DataStreamEvent& output_event );
+    
+    float itof( const uint32_t input );
 
-    wxString OnGetItemText( long item, long column ) const;
-    int OnGetItemColumnImage( long item, long column ) const;
 
-    wxString GetTargetColumnData( AIS_Target_Data *pAISTarget, long column ) const;
+// private:
+    DataStreamEvent::type DeduceType( wxString& document);
+    wxString readNextDocument( wxInputStream &source);
+    wxString toPrettyJSON( const wxJSONValue & document);
+    
+}; // namespace JSON
 
-    AISTargetListDialog *m_parent;
+namespace NMEA0183{ 
+    //public: 
+    // (NYI)
+    // std::unique_ptr<DataUpdate> parseNMEA0183Sentence( wxInputStream &doc_source );
+    
+    // // protected:
+    // OwnShipUpdate* ToOwnShip( const wxString& document);
+    // TargetUpdate* ToTarget( const wxString& document);
+}; // namespace NMEA0183
 
-};
+}; // namespace parsers
+
 
 #endif

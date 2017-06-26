@@ -27,10 +27,10 @@
 #include <wx/tokenzr.h>
 #include <wx/clipbrd.h>
 
+#include "ais/ais.h"
+#include "ais/ais_decoder.h"
+#include "ais/ais_target.h"
 #include "AISTargetListDialog.h"
-#include "ais.h"
-#include "AIS_Decoder.h"
-#include "AIS_Target_Data.h"
 #include "OCPNListCtrl.h"
 #include "styles.h"
 #include "Select.h"
@@ -48,7 +48,7 @@ extern ocpnStyle::StyleManager* g_StyleManager;
 extern int g_AisTargetList_range;
 extern wxString g_AisTargetList_perspective;
 extern MyConfig *pConfig;
-extern AISTargetListDialog *g_pAISTargetList;
+extern AISTargetListDialog *g_pAISTargetListDialog;
 extern MyFrame *gFrame;
 extern ChartCanvas *cc1;
 extern wxString g_default_wp_icon;
@@ -400,7 +400,7 @@ AISTargetListDialog::AISTargetListDialog( wxWindow *parent, wxAuiManager *auimgr
 AISTargetListDialog::~AISTargetListDialog()
 {
     Disconnect_decoder();
-    g_pAISTargetList = NULL;
+    g_pAISTargetListDialog = NULL;
     
 }
 
@@ -695,7 +695,7 @@ void AISTargetListDialog::OnClose( wxCloseEvent &event )
 {
     Disconnect_decoder();
     Hide();
-    g_pAISTargetList = NULL;
+    g_pAISTargetListDialog = NULL;
     
 }
 

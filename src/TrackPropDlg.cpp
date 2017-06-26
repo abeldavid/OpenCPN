@@ -31,7 +31,7 @@
 #include "pluginmanager.h"
 #include "OCPNPlatform.h"
 #include "TrackPropDlg.h"
-#include "Track.h"
+#include "tracking/track.h"
 
 #ifdef __OCPN__ANDROID__
 #include "androidUTIL.h"

@@ -1,9 +1,9 @@
 /***************************************************************************
  *
  * Project:  OpenCPN
- *
+ * Author:   Daniel Williams 
  ***************************************************************************
- *   Copyright (C) 2013 by David S. Register                               *
+ *   Copyright (C) 2017
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -22,34 +22,39 @@
  ***************************************************************************
  */
 
-#ifndef __OCPN_DATASTREAMEVENT_H__
-#define __OCPN_DATASTREAMEVENT_H__
+#ifndef __TRACKER_H__
+#define __TRACKER_H__
 
-#include <wx/event.h>
-#include <string>
+#include <cstdint>
+#include <map>
+#include <memory>
 
-class DataStream;
+#include "target.h"
 
-class OCPN_DataStreamEvent: public wxEvent
-{
+class TrackList;
+extern TrackList *pTrackList; // defined at Track.h:147
+
+namespace tracking {
+
+class Tracker {
 public:
-    OCPN_DataStreamEvent( wxEventType commandType = wxEVT_NULL, int id = 0 );
-    ~OCPN_DataStreamEvent( );
-
-    // accessors
-    void SetNMEAString(std::string string) { m_NMEAstring = string; }
-    void SetStream( DataStream *pDS ) { m_pDataStream = pDS; }
-    std::string GetNMEAString() { return m_NMEAstring; }
-    DataStream *GetStream() { return m_pDataStream; }
+    Tracker();
+    // virtual ~Tracker();
     
-    // required for sending with wxPostEvent()
-    wxEvent *Clone() const;
+    // Search the current AISTargetList for a match ...
+    // and return NULL if not found.
+    Target* GetTarget( const uint32_t target_id );
+    
+protected:
+    typedef uint32_t key_type;
+    
+    // eventual target
+    //std::map< uint32_t, std::shared_ptr<Target> >  m_targets;
+    
+    
+};  // class Tracker
+extern Tracker g_tracker;
 
-    wxString ProcessNMEA4Tags();
-
-private:
-    std::string m_NMEAstring;
-    DataStream *m_pDataStream;
-};
+};  // namespace AIS
 
 #endif

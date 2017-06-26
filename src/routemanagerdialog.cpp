@@ -34,6 +34,8 @@
 
 #include <iostream>
 
+#include "ais/ais.h"
+#include "ais/ais_decoder.h"
 #include "styles.h"
 #include "dychart.h"
 #include "navutil.h"
@@ -44,9 +46,8 @@
 #include "Layer.h"
 #include "SendToGpsDlg.h"
 #include "TrackPropDlg.h"
-#include "AIS_Decoder.h"
 #include "OCPNPlatform.h"
-#include "Track.h"
+#include "tracking/track.h"
 
 #define DIALOG_MARGIN 3
 

@@ -40,9 +40,9 @@
 
 #include "chart1.h"
 #include "cutil.h"
+#include "data_stream/connection_parameters.h"
 #include "styles.h"
 #include "navutil.h"
-#include "ConnectionParams.h"
 #include "FontMgr.h"
 #include "s52s57.h"
 #include "Select.h"
@@ -175,8 +175,6 @@ extern bool                      g_bShowAISName;
 extern int                       g_Show_Target_Name_Scale;
 extern bool                      g_bWplIsAprsPosition;
 
-extern int                       gps_watchdog_timeout_ticks;
-extern int                       sat_watchdog_timeout_ticks;
 
 extern int                       gGPS_Watchdog;
 extern bool                      bGPSValid;

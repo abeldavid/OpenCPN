@@ -41,6 +41,8 @@
 
 #include <wx/listimpl.cpp>
 
+#include "ais/ais_decoder.h"
+#include "cutil.h"
 #include "styles.h"
 #include "routeman.h"
 #include "concanv.h"
@@ -51,8 +53,7 @@
 #include "pluginmanager.h"
 #include "multiplexer.h"
 #include "MarkIcon.h"
-#include "cutil.h"
-#include "AIS_Decoder.h"
+#include "tracking/track.h"
 #include "wx28compat.h"
 
 #include <wx/dir.h>
@@ -60,7 +61,7 @@
 #include <wx/stdpaths.h>
 #include <wx/apptrait.h>
 #include "OCPNPlatform.h"
-#include "Track.h"
+
 
 //#include <wx/arrimpl.cpp> // this is a magic incantation which must be done!
 //WX_DEFINE_ARRAY(MarkIcon *, ArrayOfMarkIcon);

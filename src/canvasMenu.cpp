@@ -41,6 +41,10 @@
 
 #include "canvasMenu.h"
 
+
+#include "ais/ais.h"
+#include "ais/ais_decoder.h"
+#include "ais/ais_target.h"
 #include "chcanv.h"
 #include "TCWin.h"
 #include "georef.h"
@@ -60,10 +64,8 @@
 #include "tide_time.h"
 #include "Quilt.h"
 #include "FontMgr.h"
-#include "AIS_Decoder.h"
-#include "AIS_Target_Data.h"
 #include "SendToGpsDlg.h"
-#include "Track.h"
+#include "tracking/track.h"
 
 
 #ifdef USE_S57
@@ -71,8 +73,6 @@
 #include "s57chart.h"               // for ArrayOfS57Obj
 #include "s52plib.h"
 #endif
-
-#include "ais.h"
 
 #include <vector>
 

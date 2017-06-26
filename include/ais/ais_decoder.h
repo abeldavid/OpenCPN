@@ -25,36 +25,12 @@
 #ifndef __AIS_DECODER_H__
 #define __AIS_DECODER_H__
 
-#include "ais.h"
+#include <cstdint>
 #include <map>
 
-#define TRACKTYPE_DEFAULT       0
-#define TRACKTYPE_ALWAYS        1
-#define TRACKTYPE_NEVER         2
+#include "ais/ais.h"
 
-class MMSIProperties
-{
-public:
-    MMSIProperties(){};
-    MMSIProperties( int mmsi ){ Init(); MMSI = mmsi; }
-    MMSIProperties( wxString &spec );
-    
-    ~MMSIProperties();
-    
-    wxString Serialize();
-    
-    void Init( void );
-    int         MMSI;
-    int         TrackType;
-    bool        m_bignore;
-    bool        m_bMOB;
-    bool        m_bVDM;
-    bool        m_bFollower;
-    bool        m_bPersistentTrack;
-    wxString    m_ShipName;
-};
-
-WX_DECLARE_OBJARRAY(MMSIProperties *,      ArrayOfMMSIProperties);
+class wxJSONValue;
 
 class AIS_Decoder : public wxEvtHandler
 {
@@ -64,8 +40,7 @@ public:
 
     ~AIS_Decoder(void);
 
-    void OnEvtAIS(OCPN_DataStreamEvent& event);
-    AIS_Error Decode(const wxString& str);
+    void OnEvent( DataStreamEvent& event);
     AIS_Target_Hash *GetTargetList(void) {return AISTargetList;}
     AIS_Target_Hash *GetAreaNoticeSourcesList(void) {return AIS_AreaNotice_Sources;}
     AIS_Target_Data *Get_Target_Data_From_MMSI(int mmsi);
@@ -75,15 +50,33 @@ public:
     AIS_Error DecodeSingleVDO( const wxString& str, GenericPosDatEx *pos, wxString *acc );
     void DeletePersistentTrack( Track *track );
     std::map<int, Track*> m_persistent_tracks;
-    
+
 private:
+    AIS_Error DecodeJSON( const wxString& event );
+    AIS_Error DecodeNMEA(const wxString& str);
+
+    bool IsIgnored( const uint32_t MMSI );
+
     wxString GetShipNameFromFile(int nmmsi);
-    
+
     void OnActivate(wxActivateEvent& event);
     void OnTimerAIS(wxTimerEvent& event);
     void OnTimerAISAudio(wxTimerEvent& event);
     void OnTimerDSC( wxTimerEvent& event );
-    
+
+    AIS_Target_Data* FindTarget( const uint32_t target_id);
+    AIS_Target_Data* CreateTarget( const uint32_t target_id);
+
+
+    double ExtractDouble( const wxJSONValue& object, const wxString& name, const double default_value=NAN);
+    uint32_t ExtractUInt32( const wxJSONValue& object, const wxString& name, const uint32_t default_value=0);
+
+    AIS_Error ExtractATONJSON( wxJSONValue& object, AIS_Target_Data* target );
+    AIS_Error ExtractCommonJSON( wxJSONValue& object, AIS_Target_Data* target );
+    AIS_Error ExtractScaledJSON( wxJSONValue& object, AIS_Target_Data* target );
+    AIS_Error ExtractEncodedJSON( wxJSONValue& object, AIS_Target_Data* target );
+    AIS_Error ExtractNamesJSON( wxJSONValue& object, AIS_Target_Data* target );
+
     bool NMEACheckSumOK(const wxString& str);
     bool Parse_VDXBitstring(AIS_Bitstring *bstr, AIS_Target_Data *ptd);
     void UpdateAllCPA(void);
@@ -94,10 +87,9 @@ private:
     void BuildERIShipTypeHash(void);
     AIS_Target_Data *ProcessDSx( const wxString& str, bool b_take_dsc = false );
     void SendJSONMsg( AIS_Target_Data *pTarget );
-    
+
     AIS_Target_Hash *AISTargetList;
     AIS_Target_Hash *AIS_AreaNotice_Sources;
-    AIS_Target_Name_Hash *AISTargetNames;
 
     bool              m_busy;
     wxTimer           TimerAIS;
@@ -119,8 +111,7 @@ private:
     AIS_Target_Data  *m_ptentative_dsctarget;
     wxTimer          m_dsc_timer;
     wxString         m_dsc_last_string;
-    std::vector<int> m_MMSI_MismatchVec;
-    
+
 DECLARE_EVENT_TABLE()
 };
 

@@ -4,9 +4,10 @@
  * Purpose:  Navigation Utility Functions
  * Authors:   David Register
  *            Sean D'Epagnier
+ *            Daniel Williams
  *
  ***************************************************************************
- *   Copyright (C) 2016 by David S. Register                               *
+ *   Copyright (C) 2017                                                    *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -29,13 +30,15 @@
 
 #include <wx/progdlg.h>
 
-#include "vector2D.h"
-
 #include <vector>
 #include <list>
 #include <deque>
 
 #include "Route.h"
+#include "vector2D.h"
+
+
+namespace tracking {
 
 struct SubTrack
 {
@@ -44,6 +47,12 @@ struct SubTrack
     LLBBox            m_box;
     double            m_scale;
 };
+
+// would prefer that other classes be in the 'tracking' namespace, but they're
+// currently referenced in so many places, the changes aren't worth the clarity.
+
+}; // namespace tracking
+using tracking::SubTrack;
 
 class TrackPoint : public RoutePoint
 {
@@ -55,37 +64,45 @@ public:
       void SetCreateTime( wxDateTime dt );
       void Draw(ocpnDC& dc );
       wxString GetName(void){ return _T(""); }
-      
+
       int               m_GPXTrkSegNo;
-private:
+      wxString          m_timestring;
+      wxDateTime        m_CreateTimeX;
 };
+
+
 
 //----------------------------------------------------------------------------
 //    Track
 //----------------------------------------------------------------------------
-
 class Track : public Route
 {
+public:
+    enum display_mode_t { NONE, LAST, ALL};
+
 public:
     Track();
     virtual ~Track();
 
     void Draw(ocpnDC& dc, ViewPort &VP, const LLBBox &box);
     int GetnPoints(void){ return TrackPoints.size(); }
-    
-    
-    void SetVisible(bool visible = true) { m_bVisible = visible; }
+
+
+    void SetVisible(bool visible = true);
     TrackPoint *GetPoint( int nWhichPoint );
     TrackPoint *GetLastPoint();
     void AddPoint( TrackPoint *pNewPoint );
     void AddPointFinalized( TrackPoint *pNewPoint );
     TrackPoint* AddNewPoint( vector2D point, wxDateTime time );
-    
+
+    void SetVisible( display_mode_t new_mode );
     void SetListed(bool listed = true) { m_bListed = listed; }
     virtual bool IsRunning() { return false; }
 
-    bool IsVisible() { return m_bVisible; }
-    bool IsListed() { return m_bListed; }
+    bool IsVisible() const;
+    bool IsLastVisible() const;
+    bool IsAllVisible() const;
+    bool IsListed() const;
 
     int GetCurrentTrackSeg(){ return m_CurrentTrackSeg; }
     void SetCurrentTrackSeg(int seg){ m_CurrentTrackSeg = seg; }
@@ -95,7 +112,7 @@ public:
     Route *RouteFromTrack(wxGenericProgressDialog *pprog);
 
     void ClearHighlights();
-    
+
     wxString    m_GUID;
     bool        m_bIsInLayer;
     int         m_LayerID;
@@ -110,7 +127,8 @@ public:
     wxPenStyle  m_style;
     wxString    m_Colour;
 
-    bool m_bVisible;
+    // bool m_bVisible;
+    display_mode_t me_display_mode;
     bool        m_bListed;
     bool        m_btemp;
 
@@ -128,7 +146,7 @@ protected:
                                 int from, int to, double delta );
     double GetXTE(TrackPoint *fm1, TrackPoint *fm2, TrackPoint *to);
     double GetXTE( double fm1Lat, double fm1Lon, double fm2Lat, double fm2Lon, double toLat, double toLon  );
-            
+
     std::vector<TrackPoint*>     TrackPoints;
     std::vector<std::vector <SubTrack> > SubTracks;
 
@@ -160,9 +178,9 @@ class ActiveTrack : public wxEvtHandler, public Track
             void Stop(bool do_add_point = false);
             Track *DoExtendDaily();
             bool IsRunning(){ return m_bRunning; }
-            
+
             void AdjustCurrentTrackPoint( TrackPoint *prototype );
-            
+
       private:
             void OnTimerTrack(wxTimerEvent& event);
             void AddPointNow(bool do_add_point = false);
@@ -185,7 +203,7 @@ class ActiveTrack : public wxEvtHandler, public Track
             TrackPoint        *m_fixedTP;
             int               m_track_run;
             double            m_minTrackpoint_delta;
-            
+
             enum eTrackPointState {
                 firstPoint,
                 secondPoint,
@@ -196,6 +214,6 @@ class ActiveTrack : public wxEvtHandler, public Track
             std::deque<wxDateTime> skipTimes;
 
 DECLARE_EVENT_TABLE()
-};
+}; // class ActiveTrack
 
 #endif

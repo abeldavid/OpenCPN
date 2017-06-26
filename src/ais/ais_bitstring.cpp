@@ -21,11 +21,12 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,  USA.         *
  ***************************************************************************
  */
+ 
+#include <string.h>
 
 #include <wx/utils.h>
 
-#include "AIS_Bitstring.h"
-#include <string.h>
+#include "ais/ais_bitstring.h"
 
 AIS_Bitstring::AIS_Bitstring( const char *str )
 {

@@ -44,7 +44,8 @@
 #include "scrollingdialog.h"
 #endif
 
-#include "datastream.h"
+#include "chart1.h"
+#include "data_stream/data_stream.h"
 
 #ifndef __OCPN__ANDROID__
 #define __OCPN__OPTIONS_USE_LISTBOOK__
@@ -59,7 +60,7 @@ class PluginListPanel;
 class ChartGroupArray;
 class ChartGroup;
 class MMSI_Props_Panel;
-class MMSIProperties;
+namespace AIS{ class MMSIProperties; }
 class OCPNCheckedListCtrl;
 
 #define ID_DIALOG 10001
@@ -827,52 +828,8 @@ class MMSIListCtrl : private Uncopyable, public wxListCtrl {
   DECLARE_EVENT_TABLE()
 };
 
-#define ID_MMSIEDIT_OK 8191
-#define ID_MMSIEDIT_CANCEL 8192
-#define ID_MMSI_CTL 8193
-#define ID_DEF_MENU_MMSI_EDIT 8194
-#define ID_DEF_MENU_MMSI_DELETE 8195
 
-class MMSIEditDialog : private Uncopyable, public wxDialog {
- public:
-  explicit MMSIEditDialog(MMSIProperties *props, wxWindow *parent,
-                          wxWindowID id = wxID_ANY,
-                          const wxString &caption = wxEmptyString,
-                          const wxPoint &pos = wxDefaultPosition,
-                          const wxSize &size = wxDefaultSize, long style = 0);
-  ~MMSIEditDialog(void);
-
-  void SetColorScheme(ColorScheme cs);
-  void CreateControls(void);
-  void OnMMSIEditCancelClick(wxCommandEvent &event);
-  void OnMMSIEditOKClick(wxCommandEvent &event);
-  void OnCtlUpdated(wxCommandEvent &event);
-
-  MMSIProperties *m_props;
-  wxTextCtrl *m_MMSICtl, m_ShipNameCtl; //Has ToDo take away?
-  wxRadioButton *m_rbTypeTrackDefault, *m_rbTypeTrackAlways;
-  wxRadioButton *m_rbTypeTrackNever;
-  wxCheckBox *m_cbTrackPersist, *m_IgnoreButton, *m_MOBButton, *m_VDMButton, *m_FollowerButton;
-  wxButton *m_CancelButton, *m_OKButton;
-
-  DECLARE_EVENT_TABLE()
-};
-
-class MMSI_Props_Panel : private Uncopyable, public wxPanel {
- public:
-  explicit MMSI_Props_Panel(wxWindow *parent);
-  ~MMSI_Props_Panel();
-
-  void OnNewButton(wxCommandEvent &event);
-  void SetColorScheme(ColorScheme cs);
-  void UpdateMMSIList(void);
-
-  MMSIListCtrl *m_pListCtrlMMSI;
-  wxButton *m_pButtonNew;
-
- private:
-  wxWindow *m_pparent;
-};
+#include "ui/dialog/mmsi_edit_dialog.h"
 
 #endif
 // _OPTIONS_H_

@@ -44,11 +44,11 @@
 
 #include "wx/sound.h"
 
+#include "ais/ais_bitstring.h"
 #include "dychart.h"
 #include "chart1.h"
 #include "navutil.h"
 #include "OCPN_Sound.h"
-#include "AIS_Bitstring.h"
 #include "AISTargetListDialog.h"
 
 //    Constants
@@ -84,6 +84,11 @@ typedef enum AIS_Error
     AIS_NMEAVDX_TOO_LONG,
     AIS_NMEAVDX_CHECKSUM_BAD,
     AIS_NMEAVDX_BAD,
+    AIS_JSON_SYNTAX_ERROR,
+    AIS_JSON_NOT_AN_OBJECT,
+    AIS_JSON_MISSING_CLASS,
+    AIS_JSON_MISSING_MMSI,
+    AIS_JSON_MISSING_TYPE,
     AIS_NO_SERIAL,
     AIS_NO_TCP,
     AIS_GENERIC_ERROR,
@@ -123,13 +128,13 @@ typedef enum ais_nav_status
 //      Describe Transponder Class
 typedef enum ais_transponder_class
 {
-    AIS_CLASS_A = 0,
-    AIS_CLASS_B,
+    AIS_CLASS_A = 0, // Vessel-Mounted; large commercial vessels
+    AIS_CLASS_B,     // Vessel-Mounted; lighter commercial and leisure vessels
     AIS_ATON,    // Aid to Navigation   pjotrc 2010/02/01
     AIS_BASE,     // Base station
     AIS_GPSG_BUDDY, // GpsGate Buddy object
     AIS_DSC,	// DSC target
-    AIS_SART,   // SART
+    AIS_SART,   // Search-And-Rescue Transceiver
     AIS_ARPA,    // ARPA radar target
     AIS_APRS    // APRS position report
 }_ais_transponder_class;

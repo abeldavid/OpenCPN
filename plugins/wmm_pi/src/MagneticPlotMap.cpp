@@ -53,6 +53,8 @@
 static const long long lNaN = 0xfff8000000000000;
 #define qNan (*(double*)&lNaN)
 
+using std::isnan;
+
 double square(double x) { return x*x; }
 
 /* initialize cache to contain data */

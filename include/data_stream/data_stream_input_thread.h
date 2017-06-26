@@ -21,8 +21,8 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,  USA.         *
  **************************************************************************/
 
-#ifndef __OCP_DATASTREAMINPUT_THREAD_H__
-#define __OCP_DATASTREAMINPUT_THREAD_H__
+#ifndef __DataStreamInputThread_H__
+#define __DataStreamInputThread_H__
 
 #include <wx/thread.h>
 #include <wx/string.h>
@@ -50,18 +50,18 @@ class DataStream;
  *
  * This thread manages reading the NMEA data stream from the declared source.
  */
-class OCP_DataStreamInput_Thread: public wxThread
+class DataStreamInputThread: public wxThread
 {
 public:
 
-    OCP_DataStreamInput_Thread(DataStream *Launcher,
+    DataStreamInputThread(DataStream *Launcher,
                                   wxEvtHandler *MessageTarget,
                                   const wxString& PortName,
                                   const wxString& strBaudRate,
                                   dsPortType io_select
                               );
 
-    ~OCP_DataStreamInput_Thread(void);
+    ~DataStreamInputThread(void);
     void *Entry();
     bool SetOutMsg(const wxString &msg);
     void OnExit(void);

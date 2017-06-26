@@ -47,7 +47,11 @@
 #include <wx/listimpl.cpp>
 #include <wx/progdlg.h>
 
+#include "ais/ais_decoder.h"
+#include "ais/mmsi_tracker.h"
 #include "chart1.h"
+#include "data_stream/data_stream.h"
+#include "data_stream/data_stream_event.h"
 #include "navutil.h"
 #include "chcanv.h"
 #include "georef.h"
@@ -61,9 +65,7 @@
 #include "gpxdocument.h"
 #include "ocpndc.h"
 #include "geodesic.h"
-#include "datastream.h"
 #include "multiplexer.h"
-#include "ais.h"
 #include "Route.h"
 #include "Select.h"
 #include "FontMgr.h"
@@ -71,9 +73,8 @@
 #include "Layer.h"
 #include "NavObjectCollection.h"
 #include "NMEALogWindow.h"
-#include "AIS_Decoder.h"
 #include "OCPNPlatform.h"
-#include "Track.h"
+#include "tracking/track.h"
 
 #ifdef USE_S57
 #include "s52plib.h"
@@ -239,7 +240,7 @@ extern bool             g_bEnableZoomToCursor;
 extern wxString         g_toolbarConfig;
 extern double           g_TrackIntervalSeconds;
 extern double           g_TrackDeltaDistance;
-extern int              gps_watchdog_timeout_ticks;
+extern int              g_gps_watchdog_timeout_ticks;
 
 extern int              g_nCacheLimit;
 extern int              g_memCacheLimit;
@@ -366,7 +367,7 @@ extern bool             bGPSValid;              // for track recording
 extern bool             g_bGLexpert;
 
 extern int              g_SENC_LOD_pixels;
-extern ArrayOfMMSIProperties   g_MMSI_Props_Array;
+extern AIS::MMSITracker g_MMSIProps;
 
 extern int              g_chart_zoom_modifier;
 extern int              g_chart_zoom_modifier_vector;
@@ -544,7 +545,7 @@ int MyConfig::LoadMyConfig()
     Read( _T ( "DebugOpenGL" ), &g_bDebugOGL, 0 );
     Read( _T ( "AnchorWatchDefault" ), &g_nAWDefault, 50 );
     Read( _T ( "AnchorWatchMax" ), &g_nAWMax, 1852 );
-    Read( _T ( "GPSDogTimeout" ), &gps_watchdog_timeout_ticks, GPS_TIMEOUT_SECONDS );
+    Read( _T ( "GPSDogTimeout" ), &g_gps_watchdog_timeout_ticks, GPS_TIMEOUT_SECONDS );
     Read( _T ( "DebugCM93" ), &g_bDebugCM93, 0 );
     Read( _T ( "DebugS57" ), &g_bDebugS57, 0 );         // Show LUP and Feature info in object query
     Read( _T ( "DebugBSBImg" ), &g_BSBImgDebug, 0 );
@@ -1345,7 +1346,7 @@ int MyConfig::LoadMyConfig()
     SetPath( _T ( "/MMSIProperties" ) );
     int iPMax = GetNumberOfEntries();
     if( iPMax ) {
-        g_MMSI_Props_Array.Empty();
+        g_MMSIProps.clear();
         wxString str, val;
         long dummy;
         int iDir = 0;
@@ -1353,8 +1354,7 @@ int MyConfig::LoadMyConfig()
         while( bCont ) {
             pConfig->Read( str, &val );              // Get an entry
 
-            MMSIProperties *pProps = new MMSIProperties( val );
-            g_MMSI_Props_Array.Add(pProps);
+            g_MMSIProps.emplace( val.ToStdString() );
 
             bCont = pConfig->GetNextEntry( str, dummy );
 
@@ -2290,10 +2290,13 @@ void MyConfig::UpdateSettings()
 
     DeleteGroup(_T ( "/MMSIProperties" ));
     SetPath( _T ( "/MMSIProperties" ) );
-    for(unsigned int i=0 ; i < g_MMSI_Props_Array.GetCount() ; i++){
+    
+    int mmsi_index=0;
+    for( auto iter = g_MMSIProps.begin(); iter != g_MMSIProps.end(); ++iter){
         wxString p;
-        p.Printf(_T("Props%d"), i);
-        Write( p, g_MMSI_Props_Array.Item(i)->Serialize() );
+        p.Printf(_T("Props%d"), mmsi_index);
+        Write( p, wxString(iter->second->Serialize()));
+        mmsi_index++;
     }
 
 

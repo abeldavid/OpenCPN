@@ -1,12 +1,11 @@
 /***************************************************************************
  *
  * Project:  OpenCPN
- * Purpose:  NMEA Data Stream Object
- * Author:   David Register
+ * Purpose:  Data Stream Object
  *
  ***************************************************************************
  *   Copyright (C) 2010 by David S. Register                               *
- *                                                                         *
+ *                         Daniel Williams
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
  *   the Free Software Foundation; either version 2 of the License, or     *
@@ -49,9 +48,10 @@
 
 #include "dychart.h"
 
-#include "datastream.h"
-#include "OCPN_DataStreamEvent.h"
-#include "OCP_DataStreamInput_Thread.h"
+#include "data_stream/data_parsers.h"
+#include "data_stream/data_stream.h"
+#include "data_stream/data_stream_event.h"
+#include "data_stream/data_stream_input_thread.h"
 #include "garmin/jeeps/garmin_wrapper.h"
 
 #ifdef __OCPN__ANDROID__
@@ -64,8 +64,6 @@
 static const long long lNaN = 0xfff8000000000000;
 #define NAN (*(double*)&lNaN)
 #endif
-
-const wxEventType wxEVT_OCPN_DATASTREAM = wxNewEventType();
 
 #define N_DOG_TIMEOUT   5
 
@@ -130,6 +128,7 @@ DataStream::DataStream(wxEvtHandler *input_consumer,
              int EOS_type,
              int handshake_type,
              void *user_data )
+  : m_data_protocol(DATA_NMEA0183)
 {
     m_consumer = input_consumer;
     m_portstring = Port;
@@ -158,7 +157,8 @@ void DataStream::Init(void)
     m_is_multicast = false;
     m_socket_server = 0;
     m_txenter = 0;
-    m_net_protocol = GPSD;
+    m_net_protocol = TCP;
+    m_data_protocol = DATA_NMEA0183;
     
     m_socket_timer.SetOwner(this, TIMER_SOCKET);
     m_socketread_watchdog_timer.SetOwner(this, TIMER_SOCKET + 1);
@@ -168,7 +168,7 @@ void DataStream::Init(void)
 void DataStream::Open(void)
 {
     //  Open a port
-    wxLogMessage( wxString::Format(_T("Opening NMEA Datastream %s"), m_portstring.c_str()) );
+    wxLogMessage( wxString::Format(_T("Opening Datastream %s"), m_portstring.c_str()) );
     
     //    Data Source is specified serial port
     if(m_portstring.Contains(_T("Serial"))) {
@@ -216,7 +216,7 @@ void DataStream::Open(void)
 #endif
 
     //    Kick off the DataSource RX thread
-            m_pSecondary_Thread = new OCP_DataStreamInput_Thread(this,
+            m_pSecondary_Thread = new DataStreamInputThread(this,
                                                                  m_consumer,
                                                                  comx, m_BaudRate,
                                                                  m_io_select);
@@ -231,7 +231,8 @@ void DataStream::Open(void)
         if(m_portstring.Contains(_T("GPSD"))){
             m_net_addr = _T("127.0.0.1");              // defaults
             m_net_port = _T("2947");
-            m_net_protocol = GPSD;
+            m_net_protocol = TCP;
+            m_data_protocol = DATA_GPSD_JSON;
         }
         else if(m_portstring.StartsWith(_T("TCP"))) {
             m_net_addr = _T("0.0.0.0");              // defaults
@@ -277,51 +278,43 @@ void DataStream::Open(void)
 #endif
         // Create the socket
         switch(m_net_protocol){
-            case GPSD: {
-                m_sock = new wxSocketClient();
-                m_sock->SetEventHandler(*this, DS_SOCKET_ID);
-                m_sock->SetNotify(wxSOCKET_CONNECTION_FLAG | wxSOCKET_INPUT_FLAG | wxSOCKET_LOST_FLAG);
-                m_sock->Notify(TRUE);
-                m_sock->SetTimeout(1);              // Short timeout
-
-                wxSocketClient* tcp_socket = dynamic_cast<wxSocketClient*>(m_sock);
-                tcp_socket->Connect(m_addr, FALSE);
-                m_brx_connect_event = false;
             
-                break;
-            }
             case TCP: {
                 int isServer = ((addr == INADDR_ANY)?1:0);
-
-                wxSocketBase* tsock;
-
+                  
+                // wxLogMessage( wxString::Format(_T("..>>Opening TCP connections."), m_portstring.c_str() ));
+                // wxLogMessage( wxString::Format(_T("    .. network protocol: %d"), m_net_protocol ));
+                // wxLogMessage( wxString::Format(_T("    .. data_protocol: %d"), m_data_protocol ));
+                // wxLogMessage( wxString::Format(_T("    .. isServer? %d"), isServer));
+                // wxLogMessage( wxString::Format(_T("    .. addr: %s"), m_addr.IPAddress()));
+                  
                 if (isServer) {
                     m_socket_server = new wxSocketServer(m_addr, wxSOCKET_REUSEADDR );
-                    tsock = m_socket_server;
-                } else {
-                    m_sock = new wxSocketClient();
-                    tsock = m_sock;
-                }
-
-                // if((m_io_select != DS_TYPE_INPUT) && (isServer?m_socket_server->IsOk():m_sock->IsOk())) {
-                if (isServer) {
                     m_socket_server->SetEventHandler(*this, DS_SERVERSOCKET_ID);
                     m_socket_server->SetNotify( wxSOCKET_CONNECTION_FLAG );
                     m_socket_server->Notify(TRUE);
                     m_socket_server->SetTimeout(1);    // Short timeout
-                }
-                else {
+                } else {
+                    m_sock = new wxSocketClient();
                     m_sock->SetEventHandler(*this, DS_SOCKET_ID);
+                    m_sock->Notify(TRUE);
+                    m_sock->SetFlags( wxSOCKET_NOWAIT );
+                    m_brx_connect_event = false;
+                    
+                    if( DATA_GPSD_NMEA == m_data_protocol || DATA_GPSD_JSON == m_data_protocol ){
+                        m_sock->SetNotify(wxSOCKET_CONNECTION_FLAG | wxSOCKET_INPUT_FLAG | wxSOCKET_LOST_FLAG);
+                        wxSocketClient* tcp_socket = dynamic_cast<wxSocketClient*>(m_sock);
+                        tcp_socket->Connect(m_addr, FALSE);
+                        break;
+                    }
+                    
                     int notify_flags=(wxSOCKET_CONNECTION_FLAG | wxSOCKET_LOST_FLAG );
                     if (m_io_select != DS_TYPE_INPUT)
                         notify_flags |= wxSOCKET_OUTPUT_FLAG;
                     if (m_io_select != DS_TYPE_OUTPUT)
                         notify_flags |= wxSOCKET_INPUT_FLAG;
                     m_sock->SetNotify(notify_flags);
-                    m_sock->Notify(TRUE);
-                    m_sock->SetTimeout(1);              // Short timeout
-
-                    m_brx_connect_event = false;
+                    
                     m_socket_timer.Start(100, wxTIMER_ONE_SHOT);    // schedule a connection
                 }
                 
@@ -346,10 +339,10 @@ void DataStream::Open(void)
                     }
                 
                     m_sock->SetEventHandler(*this, DS_SOCKET_ID);
-                
-                    m_sock->SetNotify(wxSOCKET_CONNECTION_FLAG |
-                    wxSOCKET_INPUT_FLAG |
-                    wxSOCKET_LOST_FLAG);
+
+                    m_sock->SetNotify(  wxSOCKET_CONNECTION_FLAG |
+                                        wxSOCKET_INPUT_FLAG |
+                                        wxSOCKET_LOST_FLAG);
                     m_sock->Notify(TRUE);
                     m_sock->SetTimeout(1);              // Short timeout
                 }
@@ -406,6 +399,17 @@ void DataStream::Open(void)
 DataStream::~DataStream()
 {
     Close();
+
+    if(m_sock){
+        m_sock->Destroy();
+    }
+    if(m_tsock){
+        m_tsock->Destroy();
+    }
+    if(m_socket_server){
+        m_socket_server->Destroy();
+    }
+
 }
 
 void DataStream::Close()
@@ -437,25 +441,20 @@ void DataStream::Close()
     }
 
     //    Kill off the TCP Socket if alive
-    if(m_sock)
-    {
+    if(m_sock){
         if (m_is_multicast)
-            m_sock->SetOption(IPPROTO_IP,IP_DROP_MEMBERSHIP,&m_mrq, 
+            m_sock->SetOption(IPPROTO_IP,IP_DROP_MEMBERSHIP,&m_mrq,
                 sizeof(m_mrq));
         m_sock->Notify(FALSE);
-        m_sock->Destroy();
     }
 
-    if(m_tsock)
-    {
+    if(m_tsock){
         m_tsock->Notify(FALSE);
-        m_tsock->Destroy();
     }
-    
-    if(m_socket_server)
-    {
+
+    if(m_socket_server){
         m_socket_server->Notify(FALSE);
-        m_socket_server->Destroy();
+
     }
     
     //  Kill off the Garmin handler, if alive
@@ -513,101 +512,143 @@ void DataStream::OnTimerSocket(wxTimerEvent& event)
 }
 
 
-void DataStream::OnSocketEvent(wxSocketEvent& event)
-{
+void DataStream::OnSocketDataJSON( wxSocketEvent& event){
+    wxSocketBase& read_socket = *event.GetSocket();
+    wxSocketInputStream socket_stream( read_socket);
+
+    const int max_event_count = 12;
+    int event_count = 0;
+    while( socket_stream.CanRead() ){
+        // out-parameter
+        DataStreamEvent new_event( DataStreamEvent::source::GPSD );
+
+        // parse the JSON packet into our event
+        const bool success = parsers::JSON::generateNextEvent( socket_stream, new_event );
+
+        if( success && m_consumer ){
+            m_consumer->AddPendingEvent( new_event);
+
+            ++event_count;
+            if( max_event_count < event_count )
+                break;
+        }else{
+            break;
+        }
+    }
+
+    m_dog_value = N_DOG_TIMEOUT;                // feed the dog
+    return;
+}
+
+
+void DataStream::OnSocketDataNMEA( wxSocketEvent& event){
     //#define RD_BUF_SIZE    200
     #define RD_BUF_SIZE    4096 // Allows handling of high volume data streams, such as a National AIS stream with 100s of msgs a second.
+
+    // TODO determine if the follwing SetFlags needs to be done at every socket event or only once when socket is created, it it needs to be done at all!
+    //m_sock->SetFlags(wxSOCKET_WAITALL | wxSOCKET_BLOCK);      // was (wxSOCKET_NOWAIT);
+
+    // We use wxSOCKET_BLOCK to avoid Yield() reentrancy problems
+    // if a long ProgressDialog is active, as in S57 SENC creation.
+
+    //    Disable input event notifications to preclude re-entrancy on non-blocking socket
+    //           m_sock->SetNotify(wxSOCKET_LOST_FLAG);
+
+    //          Read the reply, one character at a time, looking for 0x0a (lf)
+    //          If the reply contains no lf, break on the buffer full
+
+    std::vector<char> data(RD_BUF_SIZE+1);
+    event.GetSocket()->Read(&data.front(),RD_BUF_SIZE);
+    if(!event.GetSocket()->Error()){
+        size_t count = event.GetSocket()->LastCount();
+        if(count){
+            data[count]=0;
+            m_sock_buffer += (&data.front());
+        }
+    }
+
+    bool done = false;
+    while(!done){
+        int nmea_tail = 2;
+        size_t nmea_end = m_sock_buffer.find_first_of("*\r\n"); // detect the potential end of a NMEA string by finding the checkum marker or EOL
+
+        if (nmea_end == wxString::npos) // No termination characters: continue reading
+            break;
+
+        if (m_sock_buffer[nmea_end] != '*')
+            nmea_tail = -1;
+
+        if(nmea_end < m_sock_buffer.size() - nmea_tail){
+            nmea_end += nmea_tail + 1; // move to the char after the 2 checksum digits, if present
+            if ( nmea_end == 0 ) //The first character in the buffer is a terminator, skip it to avoid infinite loop
+                nmea_end = 1;
+            std::string nmea_line = m_sock_buffer.substr(0,nmea_end);
+
+            //  If, due to some logic error, the {nmea_end} parameter is larger than the length of the
+            //  socket buffer, then std::string::substr() will throw an exception.
+            //  We don't want that, so test for it.
+            //  If found, the simple solution is to clear the socket buffer, and carry on
+            //  This has been seen on high volume TCP feeds, Windows only.
+            //  Hard to catch.....
+            if(nmea_end > m_sock_buffer.size())
+                m_sock_buffer.clear();
+            else
+                m_sock_buffer = m_sock_buffer.substr(nmea_end);
+
+            size_t nmea_start = nmea_line.find_last_of("$!"); // detect the potential start of a NMEA string, skipping preceding chars that may look like the start of a string.
+            if(nmea_start != wxString::npos){
+                nmea_line = nmea_line.substr(nmea_start);
+                nmea_line += "\r\n";        // Add cr/lf, possibly superfluous
+                if( m_consumer && ChecksumOK(nmea_line)){
+                    DataStreamEvent Nevent(wxEVT_OCPN_DATASTREAM, 0);
+                    if(nmea_line.size()) {
+                        Nevent.SetNMEAString( nmea_line );
+                        Nevent.SetStream( this );
+                        if( m_data_protocol == DataProtocol::DATA_GPSD_NMEA ){
+                            Nevent.SetSource( DataStreamEvent::source::GPSD);
+                        }else if( m_net_protocol==NetworkProtocol::TCP ){
+                            Nevent.SetSource( DataStreamEvent::source::TCP );
+                        }else if( m_net_protocol==NetworkProtocol::UDP ){
+                            Nevent.SetSource( DataStreamEvent::source::UDP );
+                        }
+                        Nevent.SetFormat( DataStreamEvent::format::NMEA0183 );
+
+                        m_consumer->AddPendingEvent(Nevent);
+                    }
+                }
+            }
+        }else{
+            done = true;
+        }
+    }
+
+    // Prevent non-nmea junk from consuming to much memory by limiting carry-over buffer size.
+    if(m_sock_buffer.size()>RD_BUF_SIZE)
+        m_sock_buffer = m_sock_buffer.substr(m_sock_buffer.size()-RD_BUF_SIZE);
+
+    m_dog_value = N_DOG_TIMEOUT;                // feed the dog
+    return;
+}
+
+
+void DataStream::OnSocketEvent(wxSocketEvent& event)
+{
 
     switch(event.GetSocketEvent())
     {
         case wxSOCKET_INPUT :                     // from gpsd Daemon
         {
-            // TODO determine if the follwing SetFlags needs to be done at every socket event or only once when socket is created, it it needs to be done at all!
-            //m_sock->SetFlags(wxSOCKET_WAITALL | wxSOCKET_BLOCK);      // was (wxSOCKET_NOWAIT);
-
-            // We use wxSOCKET_BLOCK to avoid Yield() reentrancy problems
-            // if a long ProgressDialog is active, as in S57 SENC creation.
-
-
-            //    Disable input event notifications to preclude re-entrancy on non-blocking socket
-            //           m_sock->SetNotify(wxSOCKET_LOST_FLAG);
-
-            //          Read the reply, one character at a time, looking for 0x0a (lf)
-            //          If the reply contains no lf, break on the buffer full
-
-            std::vector<char> data(RD_BUF_SIZE+1);
-            event.GetSocket()->Read(&data.front(),RD_BUF_SIZE);
-            if(!event.GetSocket()->Error())
-            {
-                size_t count = event.GetSocket()->LastCount();
-                if(count)
-                {
-                    data[count]=0;
-//                    m_sock_buffer.Append(data);
-                    m_sock_buffer += (&data.front());
-                }
+            if( (DATA_JSON==m_data_protocol) || (DATA_GPSD_JSON==m_data_protocol) ){
+                OnSocketDataJSON( event);
+            }else if( (DATA_NMEA0183==m_data_protocol) || (DATA_GPSD_NMEA==m_data_protocol) ){
+                OnSocketDataNMEA( event);
             }
-
-            bool done = false;
-
-            while(!done){
-                int nmea_tail = 2;
-                size_t nmea_end = m_sock_buffer.find_first_of("*\r\n"); // detect the potential end of a NMEA string by finding the checkum marker or EOL
-
-                if (nmea_end == wxString::npos) // No termination characters: continue reading
-                    break;
-
-                if (m_sock_buffer[nmea_end] != '*')
-                    nmea_tail = -1;
-
-                if(nmea_end < m_sock_buffer.size() - nmea_tail){
-                    nmea_end += nmea_tail + 1; // move to the char after the 2 checksum digits, if present
-                    if ( nmea_end == 0 ) //The first character in the buffer is a terminator, skip it to avoid infinite loop
-                        nmea_end = 1;
-                    std::string nmea_line = m_sock_buffer.substr(0,nmea_end);
-
-                    //  If, due to some logic error, the {nmea_end} parameter is larger than the length of the
-                    //  socket buffer, then std::string::substr() will throw an exception.
-                    //  We don't want that, so test for it.
-                    //  If found, the simple solution is to clear the socket buffer, and carry on
-                    //  This has been seen on high volume TCP feeds, Windows only.
-                    //  Hard to catch.....
-                    if(nmea_end > m_sock_buffer.size())
-                        m_sock_buffer.clear();
-                    else
-                        m_sock_buffer = m_sock_buffer.substr(nmea_end);
-
-                    size_t nmea_start = nmea_line.find_last_of("$!"); // detect the potential start of a NMEA string, skipping preceding chars that may look like the start of a string.
-                    if(nmea_start != wxString::npos){
-                        nmea_line = nmea_line.substr(nmea_start);
-                        nmea_line += "\r\n";        // Add cr/lf, possibly superfluous
-                        if( m_consumer && ChecksumOK(nmea_line)){
-                            OCPN_DataStreamEvent Nevent(wxEVT_OCPN_DATASTREAM, 0);
-                            if(nmea_line.size()) {
-                                Nevent.SetNMEAString( nmea_line );
-                                Nevent.SetStream( this );
-                            
-                                m_consumer->AddPendingEvent(Nevent);
-                            }
-                        }
-                    }
-                }
-                else
-                    done = true;
-            }
-
-            // Prevent non-nmea junk from consuming to much memory by limiting carry-over buffer size.
-            if(m_sock_buffer.size()>RD_BUF_SIZE)
-                m_sock_buffer = m_sock_buffer.substr(m_sock_buffer.size()-RD_BUF_SIZE);
-
-            m_dog_value = N_DOG_TIMEOUT;                // feed the dog
             break;
         }
-
         case wxSOCKET_LOST:
         {
             //          wxSocketError e = m_sock->LastError();          // this produces wxSOCKET_WOULDBLOCK.
-            if(m_net_protocol == TCP || m_net_protocol == GPSD) {
+            if(m_net_protocol == TCP ) {
 				if (m_brx_connect_event)
 					wxLogMessage(wxString::Format(_T("Datastream connection lost: %s"), m_portstring.c_str()));
                 if (m_socket_server) {
@@ -635,21 +676,28 @@ void DataStream::OnSocketEvent(wxSocketEvent& event)
 
         case wxSOCKET_CONNECTION :
         {
-            if(m_net_protocol == GPSD) {
-                //      Sign up for watcher mode, Cooked NMEA
-                //      Note that SIRF devices will be converted by gpsd into pseudo-NMEA
-                char cmd[] = "?WATCH={\"class\":\"WATCH\", \"nmea\":true}";
-                m_sock->Write(cmd, strlen(cmd));
-            }
-            else if(m_net_protocol == TCP) {
-                wxLogMessage( wxString::Format(_T("TCP Datastream connection established: %s"), m_portstring.c_str()) );
-                m_dog_value = N_DOG_TIMEOUT;                // feed the dog
-                if (m_io_select != DS_TYPE_OUTPUT)
-                    m_socketread_watchdog_timer.Start(1000);
-                if (m_io_select != DS_TYPE_INPUT && m_sock->IsOk())
-                    (void) SetOutputSocketOptions(m_sock);
-                m_socket_timer.Stop();
-                m_brx_connect_event = true;
+            if(m_net_protocol == TCP) {
+                if(m_data_protocol == DATA_GPSD_JSON ) {
+                    wxLogMessage( wxString::Format(_T(">> GPSD (json) connection established: %s"), m_portstring.c_str()) );
+                    //      Sign up for watcher mode, JSON data
+                    char cmd[] = "?WATCH={\"class\":\"WATCH\", \"json\":true, \"scaled\": true}";
+                    m_sock->Write(cmd, strlen(cmd));
+                }else if( m_data_protocol == DATA_GPSD_NMEA ) {
+                    wxLogMessage( wxString::Format(_T(">> GPSD (nmea) connection established: %s"), m_portstring.c_str()) );
+                    //      Sign up for watcher mode, Cooked NMEA
+                    //      Note that SIRF devices will be converted by gpsd into pseudo-NMEA
+                    char cmd[] = "?WATCH={\"class\":\"WATCH\", \"nmea\":true}";
+                    m_sock->Write(cmd, strlen(cmd));
+                }else{
+                    wxLogMessage( wxString::Format(_T(">> TCP Datastream connection established: %s"), m_portstring.c_str()) );
+                    m_dog_value = N_DOG_TIMEOUT;                // feed the dog
+                    if (m_io_select != DS_TYPE_OUTPUT)
+                        m_socketread_watchdog_timer.Start(1000);
+                    if (m_io_select != DS_TYPE_INPUT && m_sock->IsOk())
+                        (void) SetOutputSocketOptions(m_sock);
+                    m_socket_timer.Stop();
+                    m_brx_connect_event = true;
+                }
             }
 
             m_connect_time = wxDateTime::Now();
@@ -811,10 +859,9 @@ bool DataStream::SendSentence( const wxString &sentence )
                         else
                             ret = false;
                         break;
-                    
-                    case GPSD:    
+                    case PROTO_UNDEFINED:
                     default:
-                        ret = false;
+                        ret = true;
                         break;
             }
             m_txenter--;
@@ -1644,7 +1691,7 @@ void *GARMIN_Serial_Thread::Entry()
                         wxString message = snt.Sentence;
 
                         if( m_pMessageTarget ) {
-                            OCPN_DataStreamEvent Nevent(wxEVT_OCPN_DATASTREAM, 0);
+                            DataStreamEvent Nevent(wxEVT_OCPN_DATASTREAM, 0);
                             wxCharBuffer buffer=message.ToUTF8();
                             if(buffer.data()) {
                                 Nevent.SetNMEAString( buffer.data() );
@@ -1768,7 +1815,7 @@ void *GARMIN_USB_Thread::Entry()
                   wxString message = snt.Sentence;
 
                   if( m_pMessageTarget ) {
-                    OCPN_DataStreamEvent Nevent(wxEVT_OCPN_DATASTREAM, 0);
+                    DataStreamEvent Nevent(wxEVT_OCPN_DATASTREAM, 0);
                     wxCharBuffer buffer=message.ToUTF8();
                     if(buffer.data()) {
                         Nevent.SetNMEAString( buffer.data() );
@@ -1819,7 +1866,7 @@ void *GARMIN_USB_Thread::Entry()
                           wxString message = snt.Sentence;
 
                           if( m_pMessageTarget ) {
-                            OCPN_DataStreamEvent Nevent(wxEVT_OCPN_DATASTREAM, 0);
+                            DataStreamEvent Nevent(wxEVT_OCPN_DATASTREAM, 0);
                             wxCharBuffer buffer=message.ToUTF8();
                             if(buffer.data()) {
                                 Nevent.SetNMEAString( buffer.data() );

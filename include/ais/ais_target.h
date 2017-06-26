@@ -22,13 +22,13 @@
  ***************************************************************************
  */
 
-#ifndef __AIS_TARGET_DATA_H__
-#define __AIS_TARGET_DATA_H__
+#ifndef __AIS_TARGET_H__
+#define __AIS_TARGET_H__
 
 #include <wx/string.h>
 #include <wx/datetime.h>
 
-#include "ais.h"
+#include "ais/ais.h"
 
 void make_hash_ERI(int key, const wxString & description);
 void clear_hash_ERI( void );
@@ -49,7 +49,10 @@ public:
     void Toggle_AIS_CPA(void);
     void ToggleShowTrack(void);
     void CloneFrom( AIS_Target_Data* q );
-    
+
+    void SetCallsign( const std::string& new_callsign);
+    void SetName( const std::string& new_name, bool from_cache);
+    bool IsShipNamevalid() const ;
 
     int                       MID;
     int                       MMSI;
@@ -70,10 +73,10 @@ public:
     unsigned char             ShipType;
     int                       IMO;
 
-    int                       DimA;
-    int                       DimB;
-    int                       DimC;
-    int                       DimD;
+    int                       DimA;   // meters to Bow
+    int                       DimB;   // meters to Stern
+    int                       DimC;   // meters to Port
+    int                       DimD;   // meters to Starboard
 
     double                    Euro_Length;            // Extensions for European Inland AIS
     double                    Euro_Beam;
@@ -96,7 +99,6 @@ public:
     time_t                    PositionReportTicks;
     time_t                    StaticReportTicks;
 
-    int                       RecentPeriod;
     bool                      b_active;
     bool                      b_lost;
     ais_alert_type            n_alert_state;
@@ -105,7 +107,7 @@ public:
     bool                      b_positionOnceValid;
     bool                      b_nameValid;
 
-    //                     MMSI Properties
+    // AIS::MMSIProperties*      m_mmsi_properties;
     bool                      b_NoTrack;
     bool                      b_OwnShip;
     bool                      b_PersistTrack;
@@ -114,7 +116,7 @@ public:
     int                       m_utc_min;
     int                       m_utc_sec;
     wxString                  m_date_string;
-    
+
     wxDateTime                m_ack_time;
     bool                      b_in_ack_timeout;
 
@@ -129,7 +131,7 @@ public:
     double                    CPA;                      // Nautical Miles
 
     bool                      b_show_AIS_CPA;           //TR 2012.06.28: Show AIS-CPA
-    
+
     bool                      b_show_track;
 
     AISTargetTrackList        *m_ptrack;
@@ -140,7 +142,7 @@ public:
     bool                     b_nameFromCache;
     float                    importance;
     float                    last_scale;
-    
+
 };
 
 #endif

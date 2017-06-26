@@ -1,9 +1,10 @@
 /***************************************************************************
  *
  * Project:  OpenCPN
+ * Authors:  Daniel Williams
  *
  ***************************************************************************
- *   Copyright (C) 2013 by David S. Register                               *
+ *   Copyright (C) 2017                                                    *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -22,50 +23,32 @@
  ***************************************************************************
  */
 
-#include "OCPN_DataStreamEvent.h"
+#ifndef __TARGET_H__
+#define __TARGET_H__
 
-OCPN_DataStreamEvent::OCPN_DataStreamEvent(wxEventType commandType, int id)
-      :wxEvent(id, commandType)
-{
-    m_pDataStream = NULL;
-}
+#include <cstdint>
+#include <memory> 
+#include <vector>
 
-OCPN_DataStreamEvent::~OCPN_DataStreamEvent()
-{
-}
+// #include "track.h"
 
-//----------------------------------------------------------------------------------
-//     Strip NMEA V4 tags from message
-//----------------------------------------------------------------------------------
-wxString OCPN_DataStreamEvent::ProcessNMEA4Tags()
-{
-    wxString msg = wxString(GetNMEAString().c_str(), wxConvUTF8);
-   
-    int idxFirst =  msg.Find('\\');
+namespace tracking {
+  
+class Target {
+public: 
+    Target();
+    ~Target();
+
+    // TrackPoint* getLastLocation() const;
+    // TrackPoint* getLocation( const time_t timestamp );
+
+// protected:  
+    // uint32_t m_id;
+    //std::vector< std::shared_ptr<TrackPoint> > mp_track;
+    // Track m_track;
     
-    if(wxNOT_FOUND == idxFirst)
-        return msg;
-    
-    if(idxFirst < (int)msg.Length()-1){
-        int idxSecond = msg.Mid(idxFirst + 1).Find('\\') + 1;
-        if(wxNOT_FOUND != idxSecond){
-            if(idxSecond < (int)msg.Length()-1){
-                
-               // wxString tag = msg.Mid(idxFirst+1, (idxSecond - idxFirst) -1);
-                return msg.Mid(idxSecond + 1);
-            }
-        }
-    }
-    
-    return msg;
-}
+};  // class Target
 
+}; // namespace tracks
 
-wxEvent* OCPN_DataStreamEvent::Clone() const
-{
-    OCPN_DataStreamEvent *newevent=new OCPN_DataStreamEvent(*this);
-    newevent->m_NMEAstring=this->m_NMEAstring;
-    newevent->m_pDataStream = this->m_pDataStream;
-    return newevent;
-}
-
+#endif

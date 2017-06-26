@@ -61,6 +61,7 @@ private:
 
 #include "dychart.h"
 
+#include "ais/ais.h"
 #include "glChartCanvas.h"
 #include "chcanv.h"
 #include "s52plib.h"
@@ -76,7 +77,6 @@ private:
 #include "TexFont.h"
 #include "glTexCache.h"
 #include "gshhs.h"
-#include "ais.h"
 #include "OCPNPlatform.h"
 #include "toolbar.h"
 #include "piano.h"
@@ -85,7 +85,7 @@ private:
 #include "FontMgr.h"
 #include "mipmap/mipmap.h"
 #include "chartimg.h"
-#include "Track.h"
+#include "tracking/track.h"
 
 #ifndef GL_ETC1_RGB8_OES
 #define GL_ETC1_RGB8_OES                                        0x8D64

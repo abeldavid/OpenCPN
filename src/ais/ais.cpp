@@ -35,18 +35,21 @@
 #include <math.h>
 #include <time.h>
 
+#include "ais/ais.h"
+#include "ais/ais_decoder.h"
+#include "ais/ais_target.h"
+#include "ais/mmsi_properties.h"
+#include "ais/mmsi_tracker.h"
 #include "cutil.h"
+#include "data_stream/data_stream.h"
+#include "data_stream/data_stream_event.h"
 #include "FontMgr.h"
 #include "dychart.h"
-#include "ais.h"
 #include "chart1.h"
 #include "navutil.h"        // for Select
 #include "georef.h"
 #include "styles.h"
-#include "datastream.h"
 #include "Select.h"
-#include "AIS_Decoder.h"
-#include "AIS_Target_Data.h"
 #include "AISTargetAlertDialog.h"
 #include "AISTargetQueryDialog.h"
 #include "wx28compat.h"
@@ -101,7 +104,7 @@ extern int              g_ais_alert_dialog_x, g_ais_alert_dialog_y;
 extern int              g_ais_alert_dialog_sx, g_ais_alert_dialog_sy;
 extern wxString         g_sAIS_Alert_Sound_File;
 
-extern AISTargetListDialog    *g_pAISTargetList;
+
 extern int              g_AisTargetList_range;
 extern wxString         g_AisTargetList_perspective;
 extern int              g_AisTargetList_sortColumn;
@@ -129,7 +132,7 @@ int                     g_ScaledSizeMinimal;
 
 
 extern bool             bGPSValid;
-extern ArrayOfMMSIProperties   g_MMSI_Props_Array;
+extern AIS::MMSITracker      g_MMSIProps;
 
 extern bool             g_bresponsive;
 extern float            g_ChartScaleFactorExp;
@@ -454,10 +457,10 @@ wxString trimAISField( char *data )
     wxString field = wxString::From8BitData( data );
     while( field.Right( 1 ) == '@' || field.Right( 1 ) == ' ' )
         field.RemoveLast();
-    
+
     //  And remove any leading spaces to properly sort and display
     field.Trim(false);
-    
+
     return field;
 }
 
@@ -624,18 +627,18 @@ static void Draw_Triangle_PointDown( ocpnDC &dc, int x, int y, int base)
 	}
 
 static void AtoN_Diamond( ocpnDC &dc, int x, int y, int radius, AIS_Target_Data* td )
-{    
+{
 	//    Constants?
     wxPen pen_save = dc.GetPen();
 
     wxPen aton_DrawPen;
     wxPen aton_WhiteBorderPen;
     wxBrush aton_Brush;
-    
+
     int rad1a = radius / 2; //size off topmarks of AtoN
     int rad2a = radius / 4;
     int rad3a = rad1a - 1;// slightly smaller size off topmarks to look better for the eye
-    
+
     //Set the Pen for what is needed
     if( ( td->NavStatus == ATON_VIRTUAL_OFFPOSITION ) || ( td->NavStatus == ATON_REAL_OFFPOSITION ) )
         aton_DrawPen = wxPen( GetGlobalColor( _T ( "URED" ) ), 2 );
@@ -646,11 +649,11 @@ static void AtoN_Diamond( ocpnDC &dc, int x, int y, int radius, AIS_Target_Data*
           | ( td->NavStatus == ATON_VIRTUAL_ONPOSITION )
           | ( td->NavStatus == ATON_VIRTUAL_OFFPOSITION );
 
-    if( b_virt ) 
+    if( b_virt )
         aton_DrawPen.SetStyle(wxPENSTYLE_SHORT_DASH );
-    
+
     aton_WhiteBorderPen = wxPen(GetGlobalColor( _T ( "UWHIT" ) ), aton_DrawPen.GetWidth()+2 );
-   
+
 
     //Draw Base Diamond. First with Thick White pen then custom pen io to get a white border around the line.
     wxPoint diamond[5];
@@ -678,13 +681,13 @@ static void AtoN_Diamond( ocpnDC &dc, int x, int y, int radius, AIS_Target_Data*
             dc.DrawLines( 5, cross, x, y );
             dc.SetPen( aton_DrawPen );
             dc.DrawLines( 5, cross, x, y );
-            
+
     wxPoint TriPointUp[4]; //Declare triangles here for multiple use
                 TriPointUp[0] = wxPoint(  -rad1a, 0 );
                 TriPointUp[1] = wxPoint(  rad1a, 0 );
                 TriPointUp[2] = wxPoint(  0, -rad1a );
                 TriPointUp[3] = wxPoint(  -rad1a, 0 );
-            
+
     wxPoint TriPointDown[4]; //Declare triangles here for multiple use
     TriPointDown[0] = wxPoint(  -rad1a, -rad1a );
     TriPointDown[1] = wxPoint(  rad1a, -rad1a );
@@ -708,7 +711,7 @@ static void AtoN_Diamond( ocpnDC &dc, int x, int y, int radius, AIS_Target_Data*
                 CircleOpen[13] = wxPoint( -4,3 );
                 CircleOpen[14] = wxPoint( -3,4 );
                 CircleOpen[15] = wxPoint( -1,5 );
-                
+
     switch (td->ShipType ) {
         case 9 :
         case 20://Card. N
@@ -718,7 +721,7 @@ static void AtoN_Diamond( ocpnDC &dc, int x, int y, int radius, AIS_Target_Data*
             dc.SetPen( aton_DrawPen );
             dc.DrawLines( 4, TriPointUp, x, y - radius -1);
             dc.DrawLines( 4, TriPointUp, x, y - radius -rad1a-3);
-            break; 
+            break;
         case 10:
         case 21: //Card E
             dc.SetPen( aton_WhiteBorderPen );
@@ -761,13 +764,13 @@ static void AtoN_Diamond( ocpnDC &dc, int x, int y, int radius, AIS_Target_Data*
             }
             break;
         case 14: //StarboardHand Beacon IALA-A
-        case 25: //PortHand Beacon IALA-B 
+        case 25: //PortHand Beacon IALA-B
             dc.SetPen( aton_WhiteBorderPen );
             dc.DrawLines( 4, TriPointUp, x, y - radius );
             dc.SetPen( aton_DrawPen );
             dc.DrawLines( 4, TriPointUp, x, y - radius);
             break;
-        case 17: 
+        case 17:
         case 28: //Isolated danger
             dc.SetPen( aton_WhiteBorderPen );
             dc.DrawLines( 16, CircleOpen, x, y - radius -5);
@@ -778,14 +781,14 @@ static void AtoN_Diamond( ocpnDC &dc, int x, int y, int radius, AIS_Target_Data*
             dc.SetPen( aton_DrawPen );
             dc.DrawLines( 16, CircleOpen, x, y - radius -16);
             break;
-        case 18: 
+        case 18:
         case 29: //Safe water
             dc.SetPen( aton_WhiteBorderPen );
             dc.DrawLines( 16, CircleOpen, x, y - radius -5);
             dc.SetPen( aton_DrawPen );
             dc.DrawLines( 16, CircleOpen, x, y - radius -5);
             break;
-        case 19: 
+        case 19:
         case 30:{ //Special Mark
             cross[0] = wxPoint( -rad2a, -rad2a ); //reuse of cross array
             cross[1] = wxPoint( rad2a, rad2a);
@@ -799,7 +802,7 @@ static void AtoN_Diamond( ocpnDC &dc, int x, int y, int radius, AIS_Target_Data*
             }
             break;
         default:
-        break;    
+        break;
     }
     dc.SetPen( pen_save );
 }
@@ -881,11 +884,11 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
 
     //    Target is lost due to position report time-out, but still in Target List
     if( td->b_lost ) return;
-    
+
     float scale_factor = g_ChartScaleFactorExp;
     if( g_ChartScaleFactorExp > 1.0 )
         scale_factor = (log(g_ChartScaleFactorExp) + 1.0) * 1.2;   // soften the scale factor a bit
-    
+
     //  Establish some graphic element line widths dependent on the platform display resolution
     double nominal_line_width_pix = wxMax(1.0, floor(g_Platform->GetDisplayDPmm() / 2.5));             //0.4 mm nominal, but not less than 1 pixel
 
@@ -896,8 +899,8 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
     float width_cogpredictor_base = 3 * nominal_line_width_pix;
     float width_cogpredictor_line = 1.5 * nominal_line_width_pix;
     float width_target_outline = 1 * nominal_line_width_pix;
-    
-    
+
+
     //      Skip anchored/moored (interpreted as low speed) targets if requested
     //      unless the target is NUC or AtoN, in which case it is always displayed.
     if( ( g_bHideMoored ) && ( td->SOG <= g_ShowMoored_Kts )
@@ -960,8 +963,8 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
     GetCanvasPointPix(vp, cp, pred_lat, pred_lon, &PredPoint );
 
     bool b_hdgValid = true;
-    
-    float theta;
+
+    float theta=0;
     //    If the target reported a valid HDG, then use it for icon
     if( (int) ( td->HDG ) != 511 ) {
         theta = ( ( td->HDG - 90 ) * PI / 180. ) + vp.rotation;
@@ -1009,11 +1012,11 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
 
     int targetscale = 100;
     if ( g_bAllowShowScaled && g_bShowScaled ){
-        if (td->NavStatus <= 15){ // NavStatus > 15 is AtoN, and we don want AtoN being counted for attenuation           
+        if (td->NavStatus <= 15){ // NavStatus > 15 is AtoN, and we don want AtoN being counted for attenuation
             double temp_importance, So, Tcpa, Cpa, Rang, Siz = 0.; //calc the importance of target
             So = g_ScaledNumWeightSOG/12 * td->SOG; //0 - 12 knts gives 0 - g_ScaledNumWeightSOG weight
-            if (So > g_ScaledNumWeightSOG) So = g_ScaledNumWeightSOG; 
-                    
+            if (So > g_ScaledNumWeightSOG) So = g_ScaledNumWeightSOG;
+
             if (td->bCPA_Valid){
                 Cpa=g_ScaledNumWeightCPA - g_ScaledNumWeightCPA/4 * td->CPA;
                 //if TCPA is positief (target is coming closer), make weight of CPA bigger
@@ -1021,28 +1024,28 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
                 if ( Cpa < .0 ) Cpa = .0; //if CPA is > 4
             }
             else Cpa = .0;
-            
+
             Rang = g_ScaledNumWeightRange / 10 * td->Range_NM;
             if ( Rang > g_ScaledNumWeightRange ) Rang = g_ScaledNumWeightRange;
             Rang = g_ScaledNumWeightRange - Rang;
-                                                
+
             Siz = g_ScaledNumWeightSizeOfT/30*( td->DimA + td->DimB);
             if ( Siz > g_ScaledNumWeightSizeOfT ) Siz = g_ScaledNumWeightSizeOfT;
             temp_importance = So + Cpa + Rang + Siz;
-            
+
             td->importance=(int)temp_importance;
             int calc_scale = 0;
             if ( td->importance  > ImportanceSwitchPoint ) calc_scale=100; else calc_scale = 50; //50% is minium scale for target
             //with one tick per second targets gan slink from 100 to g_ScaledSizeMinimal% in 25 seconds
             if ( td->importance  < ImportanceSwitchPoint ) targetscale = td->last_scale -2;
             //growing from g_ScaledSizeMinimal till 100% goes faster in 10 seconds
-            if ( td->importance  > ImportanceSwitchPoint ) targetscale = td->last_scale +5; 
+            if ( td->importance  > ImportanceSwitchPoint ) targetscale = td->last_scale +5;
             if ( targetscale > 100 ) targetscale = 100;
             if ( targetscale < 50 ) targetscale = 50;//g_ScaledSizeMinimal;
-            td->last_scale = targetscale; 
+            td->last_scale = targetscale;
             }//if (td->NavStatus <= 15){ // NavStatus > 15 is AtoN
         }//if (g_bShowScaled
-    
+
     //  Draw the icon rotated to the COG
     wxPoint ais_real_size[6];
     bool bcan_draw_size = true;
@@ -1082,8 +1085,8 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
             }
         }
     }
-    
-    
+
+
     wxPoint *iconPoints;
     int nPoints;
     wxPoint ais_quad_icon[4]={ wxPoint(-8, -6),  wxPoint(0, 24),  wxPoint(8, -6), wxPoint(0, -6) };
@@ -1096,9 +1099,9 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
         wxPoint(-8,-4),
         wxPoint(-8,4),
         wxPoint(-4,8) };
-        
-     if(!g_bInlandEcdis){                                 
-        // to speed up we only calculate scale when not max or minimal 
+
+     if(!g_bInlandEcdis){
+        // to speed up we only calculate scale when not max or minimal
         if (targetscale == 50){
             ais_quad_icon[0] = wxPoint(-4, -3);
             ais_quad_icon[1] = wxPoint( 0, 12);
@@ -1137,7 +1140,7 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
 
         nPoints = 4;
         iconPoints = ais_quad_icon;
-        
+
     }
     else{                               // iENC
         if(b_hdgValid){
@@ -1150,7 +1153,7 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
             iconPoints = ais_octo_icon;
         }
     }
-        
+
 
     wxColour UBLCK = GetGlobalColor( _T ( "UBLCK" ));
     dc.SetPen( wxPen( UBLCK ) );
@@ -1166,7 +1169,7 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
     // Target name comes from cache
     if( td->b_nameFromCache )
         target_brush = wxBrush( GetGlobalColor( _T ( "GREEN5" ) ) );
-            
+
     //and....
     wxColour URED = GetGlobalColor( _T ( "URED" ));
     if( !td->b_nameValid )
@@ -1182,7 +1185,7 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
     if( td->b_positionDoubtful ) target_brush = wxBrush( GetGlobalColor( _T ( "UINFF" ) ) );
 
     wxPen target_outline_pen( UBLCK, width_target_outline );
-    
+
     //    Check for alarms here, maintained by AIS class timer tick
     if( ((td->n_alert_state == AIS_ALERT_SET) && (td->bCPA_Valid)) || (td->b_show_AIS_CPA && (td->bCPA_Valid))) {
         //  Calculate the point of CPA for target
@@ -1281,7 +1284,7 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
         if( g_pais_query_dialog_active->GetMMSI() == td->MMSI )
             TargetFrame( dc, wxPen( UBLCK , 2 ), TargetPoint.x, TargetPoint.y, 25 );
     }
-    
+
     //       Render the COG line if the speed is greater than moored speed defined by ais options dialog
     if( ( g_bShowCOG ) && ( target_sog > g_ShowMoored_Kts ) && td->b_active ) {
         int pixx = TargetPoint.x;
@@ -1316,7 +1319,7 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
 
 /*
                     // opengl optimized version, looks not as nice...
-                    
+
                     wxColour c = target_brush.GetColour();
                     glColor3ub(c.Red(), c.Green(), c.Blue());
                     float dx = pixx1 - pixx, dy = pixy1 - pixy;
@@ -1345,7 +1348,7 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
                     }
 */
 #endif
-                    if(dc.GetDC()) {      
+                    if(dc.GetDC()) {
                         dc.SetBrush( target_brush );
                         if (targetscale >= 75)
                             dc.StrokeCircle( PredPoint.x, PredPoint.y, 5 );
@@ -1353,7 +1356,7 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
                             dc.StrokeCircle( PredPoint.x, PredPoint.y, 2 );
                     } else {
 #ifdef ocpnUSE_GL
-                        
+
                         glPushMatrix();
                         glTranslated(pixx1, pixy1, 0);
                         glScalef(scale_factor, scale_factor, scale_factor);
@@ -1366,10 +1369,10 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
                             for (unsigned int i = 0; i<(sizeof points) / (sizeof *points); i++ )
                                points[i] =  points[i]/2;
                        }
-                                      
+
                         wxColour c = target_brush.GetColour();
                         glColor3ub(c.Red(), c.Green(), c.Blue());
-                                      
+
                         glBegin(GL_TRIANGLE_FAN);
                         for(unsigned int i=0; i<(sizeof points) / (sizeof *points); i+=2)
                             glVertex2i(points[i], points[i+1]);
@@ -1382,24 +1385,24 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
                             glVertex2i(points[i], points[i+1]);
                         glEnd();
                         glPopMatrix();
-#endif                    
+#endif
                     }
             }
 
             //      Draw RateOfTurn Vector
             if( ( td->ROTAIS != 0 ) && ( td->ROTAIS != -128 ) && (!g_bShowScaled) ) {
                 float cog_angle = td->COG *PI/180.;
-                
+
                 float theta2 = theta;           // ownship drawn angle
                  if (td->SOG >= g_ShowMoored_Kts )
-                     theta2 = cog_angle - (PI / 2);    // actual cog angle    
-                
+                     theta2 = cog_angle - (PI / 2);    // actual cog angle
+
                 float nv = 10;
                  if( td->ROTAIS > 0 )
                       theta2 += (float)PI / 2;
                  else
                      theta2 -= (float)PI / 2;
-                 
+
                 int xrot = (int) round ( pixx1 + ( nv * cosf ( theta2 ) ) );
                 int yrot = (int) round ( pixy1 + ( nv * sinf ( theta2 ) ) );
                 dc.StrokeLine( pixx1, pixy1, xrot, yrot );
@@ -1499,20 +1502,20 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
         dc.SetBrush( target_brush );
 
         dc.SetPen( target_pen );
-        
+
         if(dc.GetDC()) {
             dc.StrokePolygon( nPoints, iconPoints, TargetPoint.x, TargetPoint.y, scale_factor );
         } else {
 #ifdef ocpnUSE_GL
             wxColour c = target_brush.GetColour();
             glColor3ub(c.Red(), c.Green(), c.Blue());
-                        
+
             glPushMatrix();
             glTranslated(TargetPoint.x, TargetPoint.y, 0);
             glScalef(scale_factor, scale_factor, scale_factor);
-            
+
             glBegin(GL_TRIANGLE_FAN);
-            
+
             if(nPoints == 4){
                 glVertex2i(ais_quad_icon[3].x, ais_quad_icon[3].y);
                 glVertex2i(ais_quad_icon[0].x, ais_quad_icon[0].y);
@@ -1524,29 +1527,29 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
                      glVertex2i(iconPoints[i].x, iconPoints[i].y);
                  }
              }
-            
+
             glEnd();
-            
+
             // Depending on platform  (wx) capabilities, draw the nicest lines possible
 #if wxUSE_GRAPHICS_CONTEXT
             glPopMatrix();
-            
+
             dc.SetPen( target_outline_pen );
             dc.SetBrush( wxBrush( UBLCK, wxBRUSHSTYLE_TRANSPARENT ) );
             dc.StrokePolygon( nPoints, iconPoints, TargetPoint.x, TargetPoint.y, scale_factor );
-#else            
+#else
             glLineWidth(width_target_outline);
             glColor3ub(UBLCK.Red(), UBLCK.Green(), UBLCK.Blue());
-            
+
             glBegin(GL_LINE_LOOP);
             for(int i=0; i<nPoints; i++)
                 glVertex2i(iconPoints[i].x, iconPoints[i].y);
             glEnd();
             glPopMatrix();
-            
-#endif            
-            
-                
+
+#endif
+
+
 #endif
         }
 
@@ -1568,7 +1571,7 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
         // HSC usually have correct ShipType but navstatus == 0...
         if( ( ( td->ShipType >= 40 ) && ( td->ShipType < 50 ) )
             && navstatus == UNDERWAY_USING_ENGINE ) navstatus = HSC;
-    
+
         if(targetscale > 90){
             switch( navstatus ) {
             case MOORED:
@@ -1646,7 +1649,7 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
         if( td->blue_paddle) { //if blue paddle info is available blue_paddle > 0
             wxPoint ais_flag_icon[4];
             int penWidth = 2;
-            
+
             if(g_bInlandEcdis){
                 if(b_hdgValid){
                     ais_flag_icon[0] = wxPoint( -4,4);
@@ -1663,7 +1666,7 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
                 }
 
                 dc.SetPen( wxPen( GetGlobalColor( _T ( "CHWHT" ) ), penWidth ) );
-                
+
             }
             else{
                 ais_flag_icon[0] = wxPoint((int)-8*targetscale/100, (int)-6*targetscale/100);
@@ -1671,18 +1674,18 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
                 ais_flag_icon[2] = wxPoint( (int)-2*targetscale/100, 0);
                 ais_flag_icon[3] = wxPoint( (int)-2*targetscale/100, (int)-6*targetscale/100);
                 transrot_pts(4, ais_flag_icon, sin_theta, cos_theta, TargetPoint);
-                
+
 
                 if(targetscale < 100)
                     penWidth = 1;
                 dc.SetPen( wxPen( GetGlobalColor( _T ( "CHWHT" ) ), penWidth ) );
-                
+
             }
             if( td->blue_paddle == 1) {
                     ais_flag_icon[1] = ais_flag_icon[0];
                     ais_flag_icon[2] = ais_flag_icon[3];
                 }
-            
+
             dc.SetBrush( wxBrush( GetGlobalColor( _T ( "UINFB" ) ) ) );
             dc.StrokePolygon( 4, ais_flag_icon);
         }
@@ -1713,23 +1716,10 @@ static void AISDrawTarget( AIS_Target_Data *td, ocpnDC& dc, ViewPort& vp, ChartC
 
     //  Draw tracks if enabled
     //  Check the Special MMSI Properties array
-    bool b_noshow = false;
-    bool b_forceshow = false;
-    for(unsigned int i=0 ; i < g_MMSI_Props_Array.GetCount() ; i++){
-        if(td->MMSI == g_MMSI_Props_Array.Item(i)->MMSI ){
-            MMSIProperties *props = g_MMSI_Props_Array.Item(i);
-            if( TRACKTYPE_NEVER == props->TrackType){
-                b_noshow = true;
-                break;
-            }
-            else if( TRACKTYPE_ALWAYS == props->TrackType){
-                b_forceshow = true;
-                break;
-            }
-            else
-                break;
-        }
-    }
+    auto* mmsi_props = g_MMSIProps[ td->MMSI ];
+
+    bool b_noshow =  ! mmsi_props->ShouldDisplay();
+    bool b_forceshow = mmsi_props->ShouldForceDisplay();
 
     if( (!b_noshow && td->b_show_track) || b_forceshow ) {
         wxColour c = GetGlobalColor( _T ( "CHMGD" ) );
@@ -1779,7 +1769,7 @@ void AISDraw( ocpnDC& dc, ViewPort& vp, ChartCanvas *cp )
     // Toggling AIS display on and off
     if( !g_bShowAIS )
         return;//
-    //wxArrayInt importancearray; 
+    //wxArrayInt importancearray;
     //      Iterate over the AIS Target Hashmap
     AIS_Target_Hash::iterator it;
 
@@ -1792,29 +1782,29 @@ void AISDraw( ocpnDC& dc, ViewPort& vp, ChartCanvas *cp )
         p_Array[i] = 0;}    // Initialize all elements to zero.
     int low=0;
     int temp;
-    
+
     //    Draw all targets in three pass loop, sorted on SOG, GPSGate & DSC on top
     //    This way, fast targets are not obscured by slow/stationary targets
     for( it = ( *current_targets ).begin(); it != ( *current_targets ).end(); ++it ) {
         AIS_Target_Data *td = it->second;
         td->importance = 0; //Set all importance top zero at start of ais-draw serie
         if( ( td->SOG < g_ShowMoored_Kts )
-                && !( ( td->Class == AIS_GPSG_BUDDY ) || ( td->Class == AIS_DSC ) ) ) 
+                && !( ( td->Class == AIS_GPSG_BUDDY ) || ( td->Class == AIS_DSC ) ) )
         {
             AISDrawTarget( td, dc, vp, cp );
             if( td->importance > low )
             {
                 temp = low; low = 999999;
-                for (int i=0; i < NoOfElements; i++) 
+                for (int i=0; i < NoOfElements; i++)
                 {
                     if ( p_Array[i] == temp ) { p_Array[i] = td->importance; temp=-1; }
                     if ( p_Array[i] < low ) low = p_Array[i];
                 }
             }
         }
-        
+
     }
-    
+
     for( it = ( *current_targets ).begin(); it != ( *current_targets ).end(); ++it ) {
         AIS_Target_Data *td = it->second;
         if( ( td->SOG >= g_ShowMoored_Kts )
@@ -1826,13 +1816,13 @@ void AISDraw( ocpnDC& dc, ViewPort& vp, ChartCanvas *cp )
             if( td->importance > low )
             {
                 temp = low; low = 999999;
-                for (int i=0; i < NoOfElements; i++) 
+                for (int i=0; i < NoOfElements; i++)
                 {
                     if ( p_Array[i] == temp ) { p_Array[i] = td->importance; temp=-1; }
                     if ( p_Array[i] < low ) low = p_Array[i];
                 }
             }
-        }           
+        }
     }
 
     for( it = ( *current_targets ).begin(); it != ( *current_targets ).end(); ++it ) {
@@ -1841,26 +1831,26 @@ void AISDraw( ocpnDC& dc, ViewPort& vp, ChartCanvas *cp )
     }
     ImportanceSwitchPoint = low;
     delete [] p_Array;  // When done, free memory pointed to by p_Array.
-    p_Array = NULL; 
+    p_Array = NULL;
 }
 
 bool AnyAISTargetsOnscreen( ViewPort &vp )
 {
     if( !g_pAIS )
         return false;
-    
+
     if( !g_bShowAIS )
         return false;//
-        
+
     //      Iterate over the AIS Target Hashmap
     AIS_Target_Hash::iterator it;
     AIS_Target_Hash *current_targets = g_pAIS->GetTargetList();
-    
+
     for( it = ( *current_targets ).begin(); it != ( *current_targets ).end(); ++it ) {
         AIS_Target_Data *td = it->second;
         if( vp.GetBBox().Contains( td->Lat,  td->Lon ) )
             return true;                       // yep
     }
-    
+
     return false;
 }

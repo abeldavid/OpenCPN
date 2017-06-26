@@ -1,9 +1,9 @@
 /***************************************************************************
  *
  * Project:  OpenCPN
- *
+ * Author:   Daniel Williams 
  ***************************************************************************
- *   Copyright (C) 2010 by David S. Register                               *
+ *   Copyright (C) 2017                                                    *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -22,28 +22,26 @@
  ***************************************************************************
  */
 
-#ifndef __OCPNLISTCTRL_H__
-#define __OCPNLISTCTRL_H__
+// not sure why all of these got pulled in....
+#include "wx/pen.h"
+#include "wx/brush.h"
 
-#include <wx/listctrl.h>
+#include "viewport.h"
+#include "Route.h"
+#include "ocpndc.h"
+#include "bbox.h"
 
-#include "ais/ais.h"
-#include "AISTargetListDialog.h"
+#include "tracking/target.h"
 
-class OCPNListCtrl: public wxListCtrl
-{
-public:
-    OCPNListCtrl( AISTargetListDialog* parent, wxWindowID id, const wxPoint& pos,
-            const wxSize& size, long style );
-    ~OCPNListCtrl();
+using tracking::Target;
 
-    wxString OnGetItemText( long item, long column ) const;
-    int OnGetItemColumnImage( long item, long column ) const;
+Target::Target(){}
+Target::~Target(){}
 
-    wxString GetTargetColumnData( AIS_Target_Data *pAISTarget, long column ) const;
+// const TrackPoint const * Target::getLastLocation() const {
+//   
+// }
 
-    AISTargetListDialog *m_parent;
-
-};
-
-#endif
+// TrackPoint* Target::getLocation( const time_t timestamp ){
+//     return m_track.GetLastPoint();
+// }

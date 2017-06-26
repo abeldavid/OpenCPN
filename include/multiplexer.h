@@ -33,7 +33,7 @@
 #endif //precompiled headers
 
 #include "pluginmanager.h"  // for PlugInManager
-#include "datastream.h"
+#include "data_stream/data_stream.h"
 
 WX_DEFINE_ARRAY(DataStream *, wxArrayOfDataStreams);
 
@@ -63,7 +63,8 @@ class Multiplexer : public wxEvtHandler
         int SendRouteToGPS(Route *pr, const wxString &com_name, bool bsend_waypoints, wxGauge *pProgress);
         int SendWaypointToGPS(RoutePoint *prp, const wxString &com_name, wxGauge *pProgress);
 
-        void OnEvtStream(OCPN_DataStreamEvent& event);
+        void OnEvtStream( DataStreamEvent& event);
+        void OnDataStreamEvent( DataStreamEvent& event);
         
         void LogOutputMessage(const wxString &msg, wxString stream_name, bool b_filter);
         void LogOutputMessageColor(const wxString &msg, const wxString & stream_name, const wxString & color);
