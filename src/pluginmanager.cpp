@@ -3227,6 +3227,25 @@ wxArrayString GetWaypointGUIDArray( void )
     return result;
 }
 
+wxArrayString GetActiveRouteWaypointGUIDArray( void )
+{
+	  wxArrayString result;
+	  Route * r = g_pRouteMan->GetpActiveRoute();
+	  int number_points = r->GetnPoints();
+
+	  for(int i=1;i<number_points+1;i++)
+	  {
+		    RoutePoint *prp= r->GetPoint(i);
+        if(prp==NULL)
+        {
+          std::cout << "PRP = null" << std::endl;
+          continue;
+        }
+		    result.Add(prp->m_GUID);
+	  }
+	return result;
+}
+
 
 bool AddPlugInRoute( PlugIn_Route *proute, bool b_permanent )
 {
