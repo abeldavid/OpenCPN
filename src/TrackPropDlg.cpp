@@ -968,9 +968,9 @@ bool TrackPropDlg::UpdateProperties()
         }
 ///        m_scrolledWindowLinks->DestroyChildren();
         int NbrOfLinks = m_pTrack->m_HyperlinkList->GetCount();
-            HyperlinkList *hyperlinklist = m_pTrack->m_HyperlinkList;
+        HyperlinkList *hyperlinklist = m_pTrack->m_HyperlinkList;
     //            int len = 0;
-            if( NbrOfLinks > 0 ) {
+        if( NbrOfLinks > 0 ) {
             wxHyperlinkListNode *linknode = hyperlinklist->GetFirst();
             while( linknode ) {
                 Hyperlink *link = linknode->GetData();
@@ -1006,6 +1006,7 @@ bool TrackPropDlg::UpdateProperties()
     // Calculate AVG speed if we are showing a track and total time
     TrackPoint *last_point = m_pTrack->GetLastPoint();
     TrackPoint *first_point = m_pTrack->GetPoint( 0 );
+    double trackLength = m_pTrack->Length( );
     double total_seconds = 0.;
 
     wxString speed( _T("--") );
@@ -1015,7 +1016,7 @@ bool TrackPropDlg::UpdateProperties()
             total_seconds =
                     last_point->GetCreateTime().Subtract( first_point->GetCreateTime() ).GetSeconds().ToDouble();
             if( total_seconds != 0. ) {
-                m_avgspeed = m_pTrack->Length() / total_seconds * 3600;
+                m_avgspeed = trackLength / total_seconds * 3600;
             } else {
                 m_avgspeed = 0;
             }
@@ -1027,7 +1028,7 @@ bool TrackPropDlg::UpdateProperties()
 
     //  Total length
     wxString slen;
-    slen.Printf( wxT("%5.2f ") + getUsrDistanceUnit(), toUsrDistance( m_pTrack->Length() ) );
+    slen.Printf( wxT("%5.2f ") + getUsrDistanceUnit(), toUsrDistance( trackLength ) );
 
     m_tTotDistance->SetValue( slen );
 
@@ -1239,8 +1240,40 @@ void TrackPropDlg::OnTrackPropCopyTxtClick( wxCommandEvent& event )
 
 void TrackPropDlg::OnPrintBtnClick( wxCommandEvent& event )
 {
-//    RoutePrintSelection dlg( this, m_pTrack );
-//    dlg.ShowModal();
+    //  We need to walk the virtual list to fill in the courses and distances
+    for ( int n = 0; n < m_pTrack->GetnPoints(); n++ ) {
+        TrackPoint  *this_point = m_pTrack->GetPoint(n);
+        TrackPoint  *prev_point = n > 0 ? m_pTrack->GetPoint(n-1) : NULL;
+        
+        double gt_brg, gt_leg_dist;
+        double slat, slon;
+        if( n == 0 )
+        {
+            slat = gLat;
+            slon = gLon;
+        }
+        else  if( prev_point )
+        {
+            slat = prev_point->m_lat;
+            slon = prev_point->m_lon;
+        }
+         else
+         {
+             slat = gLat;
+             slon = gLon;
+         }
+        
+        DistanceBearingMercator( this_point->m_lat, this_point->m_lon, slat, slon, &gt_brg, &gt_leg_dist );
+        if(prev_point){
+            this_point->m_routeprop_distance = gt_leg_dist;
+            prev_point->m_routeprop_course = gt_brg;
+        }
+        
+    }
+    
+        
+    RoutePrintSelection dlg( this, m_pTrack );
+    dlg.ShowModal();
 }
 
 void TrackPropDlg::OnTrackPropRightClick( wxListEvent &event )
@@ -1669,11 +1702,13 @@ wxString OCPNTrackListCtrl::OnGetItemText( long item, long column ) const
             DistanceBearingMercator( this_point->m_lat, this_point->m_lon, slat, slon, &gt_brg, &gt_leg_dist );
 
             ret.Printf( _T("%6.2f ") + getUsrDistanceUnit(), toUsrDistance( gt_leg_dist ) );
+            this_point->m_routeprop_distance = gt_leg_dist;
             break;
 
         case 2:
             DistanceBearingMercator( this_point->m_lat, this_point->m_lon, slat, slon, &gt_brg, &gt_leg_dist );
             ret.Printf( _T("%03.0f \u00B0T"), gt_brg );
+            this_point->m_routeprop_course = gt_brg;
             break;
 
         case 3:
